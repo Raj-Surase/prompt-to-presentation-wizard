@@ -25,7 +25,7 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
         <div className="relative">
           <Textarea
             placeholder="Describe your presentation topic and content here..."
-            className="min-h-32 bg-muted/50 text-foreground border-border rounded-xl px-4 py-3 resize-none"
+            className="min-h-32 bg-black/60 text-foreground border-border rounded-xl px-4 py-3 resize-none"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={isLoading}
