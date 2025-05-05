@@ -83,7 +83,17 @@
   }
   
   .rounded-input {
-    @apply bg-background/80 p-2 rounded-xl border-border border text-lg font-medium;
+    @apply p-2 rounded-xl border-border border text-lg font-medium;
+  }
+  
+  /* Scrollbar styling */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 }
 

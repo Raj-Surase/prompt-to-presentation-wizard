@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, PlusCircle, GripVertical } from "lucide-react";
+import { ArrowRight, PlusCircle, GripVertical, Trash2 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
 export interface Topic {
@@ -61,6 +61,14 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
       id: `topic-${topics.length}-${Date.now()}`,
     };
     setTopics([...topics, newSlide]);
+  };
+
+  const removeSlide = (topicIndex: number) => {
+    if (topics.length > 1) {
+      const newTopics = [...topics];
+      newTopics.splice(topicIndex, 1);
+      setTopics(newTopics);
+    }
   };
 
   // Handle drag and drop of points within a topic
@@ -124,11 +132,21 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
                           </div>
                           <input
                             type="text"
-                            className="w-full rounded-input"
+                            className="w-full rounded-input border border-white/30 bg-transparent"
                             value={topic.title}
                             onChange={(e) => updateTopicTitle(topicIndex, e.target.value)}
                             placeholder="Slide title"
                           />
+                          {topics.length > 1 && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="ml-2 text-destructive hover:bg-destructive/20 hover:text-destructive"
+                              onClick={() => removeSlide(topicIndex)}
+                            >
+                              <Trash2 size={18} />
+                            </Button>
+                          )}
                         </div>
                         
                         <DragDropContext onDragEnd={(result) => handlePointDragEnd(result, topicIndex)}>
@@ -159,7 +177,7 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
                                         </div>
                                         <input
                                           type="text"
-                                          className="w-full bg-background/50 p-2 rounded border-border/50 border"
+                                          className="w-full border border-white/20 bg-transparent p-2 rounded"
                                           value={point}
                                           onChange={(e) => updateTopicPoint(topicIndex, pointIndex, e.target.value)}
                                           placeholder="Add point"
