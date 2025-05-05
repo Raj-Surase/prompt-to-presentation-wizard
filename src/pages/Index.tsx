@@ -48,7 +48,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen mesh-gradient flex flex-col items-center justify-center px-4 py-12">
       <div className="text-center mb-10">
         <h1 className="text-4xl md:text-5xl font-bold mb-3 gradient-text">
           Presentation AI
