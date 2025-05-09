@@ -91,9 +91,8 @@ export const PresentationProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleExport = () => {
-    // In a real app, this would generate and download a PPT file
-    console.log("Exporting presentation with topics:", topics);
-    alert("In a real implementation, this would export a PowerPoint file with your slides!");
+    // This is now handled by the ExportModal component
+    console.log("Export button clicked");
   };
 
   return (

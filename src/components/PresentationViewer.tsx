@@ -1,10 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, ArrowLeft, Download } from "lucide-react";
 import { Topic } from './PresentationTopicEditor';
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import ExportModal from './ExportModal';
 
 interface PresentationViewerProps {
   topics: Topic[];
@@ -13,6 +15,17 @@ interface PresentationViewerProps {
 
 const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExport }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  // Simulate loading for 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   const nextSlide = () => {
     if (currentSlide < topics.length - 1) {
@@ -30,6 +43,10 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
     setCurrentSlide(index);
   };
 
+  const handleExportClick = () => {
+    setShowExportModal(true);
+  };
+
   return (
     <div className="w-full max-w-6xl flex flex-col space-y-6">
       {/* App Bar */}
@@ -38,7 +55,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
           <h1 className="text-2xl font-bold gradient-text">Presentation AI</h1>
         </div>
         <Button 
-          onClick={onExport} 
+          onClick={handleExportClick} 
           className="bg-accent hover:bg-accent/80 flex gap-2 items-center"
         >
           <Download size={16} /> Export Presentation
@@ -95,23 +112,32 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
           
           <Card className="w-full aspect-[16/9] flex items-center justify-center mb-6 flex-grow bg-black border border-white/10">
             <CardContent className="p-10 w-full h-full flex flex-col">
-              <h2 className="text-3xl font-bold mb-6 gradient-text">
-                {topics[currentSlide].title}
-              </h2>
-              <ul className="space-y-4 list-disc pl-6">
-                {topics[currentSlide].points.map((point, index) => (
-                  <li key={index} className="text-xl animate-enter" style={{ animationDelay: `${index * 0.1}s` }}>
-                    {point}
-                  </li>
-                ))}
-              </ul>
+              {isLoading ? (
+                <div className="h-full w-full flex flex-col justify-center items-center space-y-8">
+                  <div className="animate-spin w-12 h-12 border-4 border-accent rounded-full border-t-transparent"></div>
+                  <p className="text-muted-foreground animate-pulse">Generating preview...</p>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-3xl font-bold mb-6 gradient-text">
+                    {topics[currentSlide].title}
+                  </h2>
+                  <ul className="space-y-4 list-disc pl-6">
+                    {topics[currentSlide].points.map((point, index) => (
+                      <li key={index} className="text-xl animate-enter" style={{ animationDelay: `${index * 0.1}s` }}>
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </CardContent>
           </Card>
           
           <div className="flex justify-between w-full mb-6">
             <Button 
               onClick={prevSlide} 
-              disabled={currentSlide === 0}
+              disabled={currentSlide === 0 || isLoading}
               variant="outline"
               className="flex gap-2 items-center"
             >
@@ -120,7 +146,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
             
             <Button 
               onClick={nextSlide}
-              disabled={currentSlide === topics.length - 1}
+              disabled={currentSlide === topics.length - 1 || isLoading}
               variant="outline"
               className="flex gap-2 items-center"
             >
@@ -129,6 +155,12 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
           </div>
         </div>
       </div>
+
+      {/* Export Modal */}
+      <ExportModal 
+        isOpen={showExportModal} 
+        onClose={() => setShowExportModal(false)} 
+      />
     </div>
   );
 };
