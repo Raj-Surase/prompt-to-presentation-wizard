@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, PlusCircle, GripVertical, Trash2 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { Textarea } from "@/components/ui/textarea";
 
 export interface Topic {
   title: string;
   points: string[];
   id?: string; // Add id for drag and drop
+  content?: string; // New field for single textfield content
 }
 
 interface PresentationTopicEditorProps {
@@ -22,11 +24,12 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
   onProceed,
   isLoading = false
 }) => {
-  // Ensure topics have unique IDs
+  // Ensure topics have unique IDs and initialize content field
   const [topics, setTopics] = useState<Topic[]>(() => 
     initialTopics.map((topic, index) => ({
       ...topic,
       id: topic.id || `topic-${index}-${Date.now()}`,
+      content: topic.points?.join('\n') || "" // Initialize content from points
     }))
   );
 
@@ -36,21 +39,11 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
     setTopics(newTopics);
   };
 
-  const updateTopicPoint = (topicIndex: number, pointIndex: number, newPoint: string) => {
+  const updateTopicContent = (index: number, newContent: string) => {
     const newTopics = [...topics];
-    newTopics[topicIndex].points[pointIndex] = newPoint;
-    setTopics(newTopics);
-  };
-
-  const addPoint = (topicIndex: number) => {
-    const newTopics = [...topics];
-    newTopics[topicIndex].points.push("");
-    setTopics(newTopics);
-  };
-
-  const removePoint = (topicIndex: number, pointIndex: number) => {
-    const newTopics = [...topics];
-    newTopics[topicIndex].points.splice(pointIndex, 1);
+    newTopics[index].content = newContent;
+    // Also update points by splitting content by new lines
+    newTopics[index].points = newContent.split('\n').filter(line => line.trim() !== '');
     setTopics(newTopics);
   };
 
@@ -58,6 +51,7 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
     const newSlide: Topic = {
       title: "New Slide",
       points: [""],
+      content: "",
       id: `topic-${topics.length}-${Date.now()}`,
     };
     setTopics([...topics, newSlide]);
@@ -69,19 +63,6 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
       newTopics.splice(topicIndex, 1);
       setTopics(newTopics);
     }
-  };
-
-  // Handle drag and drop of points within a topic
-  const handlePointDragEnd = (result: DropResult, topicIndex: number) => {
-    if (!result.destination) return;
-    
-    const newTopics = [...topics];
-    const points = [...newTopics[topicIndex].points];
-    const [movedPoint] = points.splice(result.source.index, 1);
-    points.splice(result.destination.index, 0, movedPoint);
-    
-    newTopics[topicIndex].points = points;
-    setTopics(newTopics);
   };
 
   // Handle drag and drop of topics
@@ -96,14 +77,19 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
   };
 
   const handleSubmit = () => {
-    onProceed(topics);
+    // Ensure points are properly set from content before proceeding
+    const finalTopics = topics.map(topic => ({
+      ...topic,
+      points: topic.content ? topic.content.split('\n').filter(line => line.trim() !== '') : topic.points
+    }));
+    onProceed(finalTopics);
   };
 
   return (
     <div className="w-full max-w-4xl">
       <div className="mb-6">
         <h2 className="text-2xl font-bold mb-2 gradient-text">Edit Your Presentation Topics</h2>
-        <p className="text-muted-foreground">Customize the topics and points for your slides</p>
+        <p className="text-muted-foreground">Customize the topics and content for your slides</p>
       </div>
       
       <DragDropContext onDragEnd={handleTopicDragEnd}>
@@ -149,65 +135,13 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
                           )}
                         </div>
                         
-                        <DragDropContext onDragEnd={(result) => handlePointDragEnd(result, topicIndex)}>
-                          <Droppable droppableId={`topic-${topicIndex}-points`}>
-                            {(provided) => (
-                              <div 
-                                className="space-y-2"
-                                ref={provided.innerRef}
-                                {...provided.droppableProps}
-                              >
-                                {topic.points.map((point, pointIndex) => (
-                                  <Draggable 
-                                    key={`point-${topicIndex}-${pointIndex}`}
-                                    draggableId={`point-${topicIndex}-${pointIndex}`}
-                                    index={pointIndex}
-                                  >
-                                    {(provided) => (
-                                      <div 
-                                        className="flex gap-2 items-center"
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                      >
-                                        <div 
-                                          className="cursor-move p-1 hover:bg-white/5 rounded"
-                                          {...provided.dragHandleProps}
-                                        >
-                                          <GripVertical size={16} />
-                                        </div>
-                                        <input
-                                          type="text"
-                                          className="w-full border border-white/20 bg-transparent p-2 rounded"
-                                          value={point}
-                                          onChange={(e) => updateTopicPoint(topicIndex, pointIndex, e.target.value)}
-                                          placeholder="Add point"
-                                        />
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          onClick={() => removePoint(topicIndex, pointIndex)}
-                                          className="hover:bg-destructive/20"
-                                        >
-                                          ✕
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </Draggable>
-                                ))}
-                                {provided.placeholder}
-                              </div>
-                            )}
-                          </Droppable>
-                        </DragDropContext>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => addPoint(topicIndex)} 
-                          className="mt-4 text-sm flex items-center gap-1"
-                        >
-                          <PlusCircle size={16} /> Add Point
-                        </Button>
+                        {/* Single text area for slide content */}
+                        <Textarea
+                          className="w-full border border-white/20 bg-transparent p-2 rounded min-h-32 resize-vertical"
+                          value={topic.content}
+                          onChange={(e) => updateTopicContent(topicIndex, e.target.value)}
+                          placeholder="Enter slide content here. Each line will become a bullet point in your presentation."
+                        />
                       </CardContent>
                     </Card>
                   )}

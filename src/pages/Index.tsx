@@ -33,6 +33,7 @@ const Index = () => {
               setTopics(updatedTopics);
               setCurrentStep(2);
             }}
+            isLoading={isLoading}
           />
         );
       case 2:
