@@ -2,7 +2,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, Share, FileText, FileImage, FilePpt } from "lucide-react";
+import { Download, Share, FileText, FileImage, FileSpreadsheet } from "lucide-react";
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -37,7 +37,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
             className="flex justify-between items-center bg-secondary hover:bg-secondary/80 h-16"
           >
             <div className="flex items-center">
-              <FilePpt className="mr-2" />
+              <FileSpreadsheet className="mr-2" />
               <span>PowerPoint (.pptx)</span>
             </div>
             <Download size={18} />
