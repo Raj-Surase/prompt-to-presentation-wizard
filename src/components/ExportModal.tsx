@@ -34,7 +34,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         <div className="grid gap-4 py-4">
           <Button 
             onClick={() => handleExport('PowerPoint (.pptx)')}
-            className="flex justify-between items-center bg-purple-600 hover:bg-purple-700 h-16"
+            className="flex justify-between items-center bg-gray-600 hover:bg-gray-700 h-16"
           >
             <div className="flex items-center">
               <FileSpreadsheet className="mr-2" />
@@ -45,7 +45,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
           
           <Button 
             onClick={() => handleExport('PDF (.pdf)')}
-            className="flex justify-between items-center bg-blue-600 hover:bg-blue-700 h-16"
+            className="flex justify-between items-center bg-gray-600 hover:bg-gray-700 h-16"
           >
             <div className="flex items-center">
               <FileText className="mr-2" />
@@ -56,7 +56,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
           
           <Button 
             onClick={() => handleExport('Images (.png)')}
-            className="flex justify-between items-center bg-orange-600 hover:bg-orange-700 h-16"
+            className="flex justify-between items-center bg-gray-600 hover:bg-gray-700 h-16"
           >
             <div className="flex items-center">
               <FileImage className="mr-2" />
