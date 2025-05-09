@@ -1,9 +1,13 @@
-
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, PlusCircle, GripVertical, Trash2 } from "lucide-react";
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from "react-beautiful-dnd";
 import { Textarea } from "@/components/ui/textarea";
 
 export interface Topic {
@@ -18,16 +22,16 @@ interface PresentationTopicEditorProps {
   isLoading?: boolean;
 }
 
-const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({ 
-  initialTopics, 
+const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
+  initialTopics,
   onProceed,
-  isLoading = false
+  isLoading = false,
 }) => {
-  const [topics, setTopics] = useState<Topic[]>(() => 
+  const [topics, setTopics] = useState<Topic[]>(() =>
     initialTopics.map((topic, index) => ({
       ...topic,
-      id: topic.id || `topic-${index}-${Date.now()}`
-    }))
+      id: topic.id || `topic-${index}-${Date.now()}`,
+    })),
   );
 
   const updateTopicTitle = (index: number, newTitle: string) => {
@@ -40,7 +44,6 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
     const newSlide: Topic = {
       title: "New Slide",
       points: [""],
-      content: "",
       id: `topic-${topics.length}-${Date.now()}`,
     };
     setTopics([...topics, newSlide]);
@@ -57,11 +60,11 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
   // Handle drag and drop of topics
   const handleTopicDragEnd = (result: DropResult) => {
     if (!result.destination) return;
-    
+
     const items = [...topics];
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
-    
+
     setTopics(items);
   };
 
@@ -72,29 +75,37 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
   return (
     <div className="w-full max-w-4xl">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2 gradient-text">Edit Your Presentation Topics</h2>
-        <p className="text-muted-foreground">Customize the topics and content for your slides</p>
+        <h2 className="text-2xl font-bold mb-2 gradient-text">
+          Edit Your Presentation Topics
+        </h2>
+        <p className="text-muted-foreground">
+          Customize the topics and content for your slides
+        </p>
       </div>
-      
+
       <DragDropContext onDragEnd={handleTopicDragEnd}>
         <Droppable droppableId="topics">
           {(provided) => (
-            <div 
-              className="space-y-6 mb-6" 
+            <div
+              className="space-y-6 mb-6"
               {...provided.droppableProps}
               ref={provided.innerRef}
             >
               {topics.map((topic, topicIndex) => (
-                <Draggable key={topic.id} draggableId={topic.id || `topic-${topicIndex}`} index={topicIndex}>
+                <Draggable
+                  key={topic.id}
+                  draggableId={topic.id || `topic-${topicIndex}`}
+                  index={topicIndex}
+                >
                   {(provided) => (
-                    <Card 
+                    <Card
                       className="glass-panel"
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                     >
                       <CardContent className="p-5">
                         <div className="flex items-center mb-4">
-                          <div 
+                          <div
                             className="mr-2 cursor-move p-2 hover:bg-white/5 rounded"
                             {...provided.dragHandleProps}
                           >
@@ -104,12 +115,14 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
                             type="text"
                             className="w-full rounded-input border border-white/30 bg-transparent"
                             value={topic.title}
-                            onChange={(e) => updateTopicTitle(topicIndex, e.target.value)}
+                            onChange={(e) =>
+                              updateTopicTitle(topicIndex, e.target.value)
+                            }
                             placeholder="Slide title"
                           />
                           {topics.length > 1 && (
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               className="ml-2 text-destructive hover:bg-destructive/20 hover:text-destructive"
                               onClick={() => removeSlide(topicIndex)}
@@ -128,19 +141,19 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
           )}
         </Droppable>
       </DragDropContext>
-      
+
       <div className="flex gap-4 mb-6">
-        <Button 
-          onClick={addSlide} 
+        <Button
+          onClick={addSlide}
           variant="outline"
           className="flex items-center gap-2"
         >
           <PlusCircle size={16} /> Add Slide
         </Button>
       </div>
-      
-      <Button 
-        onClick={handleSubmit} 
+
+      <Button
+        onClick={handleSubmit}
         className="w-full rounded-xl bg-accent hover:bg-accent/80 transition-all"
         disabled={isLoading}
       >
