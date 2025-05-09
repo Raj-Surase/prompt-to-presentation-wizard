@@ -103,7 +103,7 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                     >
-                      <CardContent className="p-5">
+                      <CardContent className="p-4 pb-2">
                         <div className="flex items-center mb-4">
                           <div
                             className="mr-2 cursor-move p-2 hover:bg-white/5 rounded"
