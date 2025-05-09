@@ -10,7 +10,6 @@ export interface Topic {
   title: string;
   points: string[];
   id?: string; // Add id for drag and drop
-  content?: string; // New field for single textfield content
 }
 
 interface PresentationTopicEditorProps {
@@ -24,26 +23,16 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
   onProceed,
   isLoading = false
 }) => {
-  // Ensure topics have unique IDs and initialize content field
   const [topics, setTopics] = useState<Topic[]>(() => 
     initialTopics.map((topic, index) => ({
       ...topic,
-      id: topic.id || `topic-${index}-${Date.now()}`,
-      content: topic.points?.join('\n') || "" // Initialize content from points
+      id: topic.id || `topic-${index}-${Date.now()}`
     }))
   );
 
   const updateTopicTitle = (index: number, newTitle: string) => {
     const newTopics = [...topics];
     newTopics[index].title = newTitle;
-    setTopics(newTopics);
-  };
-
-  const updateTopicContent = (index: number, newContent: string) => {
-    const newTopics = [...topics];
-    newTopics[index].content = newContent;
-    // Also update points by splitting content by new lines
-    newTopics[index].points = newContent.split('\n').filter(line => line.trim() !== '');
     setTopics(newTopics);
   };
 
@@ -77,12 +66,7 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
   };
 
   const handleSubmit = () => {
-    // Ensure points are properly set from content before proceeding
-    const finalTopics = topics.map(topic => ({
-      ...topic,
-      points: topic.content ? topic.content.split('\n').filter(line => line.trim() !== '') : topic.points
-    }));
-    onProceed(finalTopics);
+    onProceed(topics);
   };
 
   return (
@@ -134,14 +118,6 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
                             </Button>
                           )}
                         </div>
-                        
-                        {/* Single text area for slide content */}
-                        <Textarea
-                          className="w-full border border-white/20 bg-transparent p-2 rounded min-h-32 resize-vertical"
-                          value={topic.content}
-                          onChange={(e) => updateTopicContent(topicIndex, e.target.value)}
-                          placeholder="Enter slide content here. Each line will become a bullet point in your presentation."
-                        />
                       </CardContent>
                     </Card>
                   )}
