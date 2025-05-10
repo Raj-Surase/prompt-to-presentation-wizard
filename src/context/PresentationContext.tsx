@@ -1,59 +1,22 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Topic } from '@/components/PresentationTopicEditor';
 
-// Mock data for demonstration - this would be replaced with real AI processing
-const mockProcessPrompt = async (prompt: string): Promise<Topic[]> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  // Simple mock response based on the prompt
-  const topics = [
-    {
-      title: "Introduction to " + prompt,
-      points: [
-        "Overview of key concepts",
-        "Why this topic matters",
-        "Goals of this presentation"
-      ]
-    },
-    {
-      title: "Key Components",
-      points: [
-        "Component 1: Core features",
-        "Component 2: Implementation strategy",
-        "Component 3: Benefits and advantages"
-      ]
-    },
-    {
-      title: "Real World Applications",
-      points: [
-        "Case study 1: Success story",
-        "Case study 2: Challenges and solutions",
-        "Future opportunities"
-      ]
-    },
-    {
-      title: "Conclusion",
-      points: [
-        "Summary of key points",
-        "Next steps and recommendations",
-        "Q&A and discussion"
-      ]
-    }
-  ];
-  
-  return topics;
-};
+// Define the Topic interface
+interface Topic {
+  title: string;
+  points?: string[];
+  content?: string;
+  index?: number;
+}
 
 interface PresentationContextType {
   currentStep: number;
   setCurrentStep: (step: number) => void;
   prompt: string;
   setPrompt: (prompt: string) => void;
-  topics: Topic[];
-  setTopics: (topics: Topic[]) => void;
+  topics: any; // Using any type to accommodate different response structures
+  setTopics: (topics: any) => void;
   isLoading: boolean;
+  setIsLoading: (isLoading: boolean) => void;
   processPrompt: (prompt: string) => Promise<void>;
   handleExport: () => void;
 }
@@ -71,27 +34,18 @@ export const usePresentationContext = () => {
 export const PresentationProvider = ({ children }: { children: ReactNode }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [prompt, setPrompt] = useState('');
-  const [topics, setTopics] = useState<Topic[]>([]);
+  const [topics, setTopics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [presentationId, setPresentationId] = useState<number | null>(null);
 
+  // This is no longer used directly as API calls are handled in the components
   const processPrompt = async (inputPrompt: string) => {
     setPrompt(inputPrompt);
-    setIsLoading(true);
-    try {
-      // In a real app, this would call an AI service to process the prompt
-      const generatedTopics = await mockProcessPrompt(inputPrompt);
-      setTopics(generatedTopics);
-      setCurrentStep(1); // Move to topic editor step
-    } catch (error) {
-      console.error("Error processing prompt:", error);
-      // Handle error state
-    } finally {
-      setIsLoading(false);
-    }
+    // The PromptInput component now handles API calls directly
   };
 
   const handleExport = () => {
-    // This is now handled by the ExportModal component
+    // This is now handled in the PresentationViewer component
     console.log("Export button clicked");
   };
 
@@ -105,6 +59,7 @@ export const PresentationProvider = ({ children }: { children: ReactNode }) => {
         topics,
         setTopics,
         isLoading,
+        setIsLoading,
         processPrompt,
         handleExport
       }}

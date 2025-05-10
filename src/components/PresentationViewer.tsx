@@ -1,166 +1,472 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, ArrowLeft, Download } from "lucide-react";
-import { Topic } from './PresentationTopicEditor';
+import { ArrowRight, ArrowLeft, Download, Edit, Loader2, Save, ChevronDown, ChevronUp } from "lucide-react";
+import { usePresentationContext } from '@/context/PresentationContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import ExportModal from './ExportModal';
 
 interface PresentationViewerProps {
-  topics: Topic[];
+  topics: any;
   onExport: () => void;
+  presentationId?: number | null;
 }
 
-const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExport }) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showExportModal, setShowExportModal] = useState(false);
+const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExport, presentationId }) => {
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [presentationData, setPresentationData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [exportUrl, setExportUrl] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState('Loading your presentation...');
+  const [editMode, setEditMode] = useState(false);
+  const [editedSlide, setEditedSlide] = useState<any>(null);
 
-  // Simulate loading for 5 seconds
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 5000);
+    if (topics) {
+      setPresentationData(topics);
+      
+      if (presentationId) {
+        setExportUrl(`/api/download/${presentationId}`);
+      }
+    }
+  }, [topics, presentationId]);
+
+  const handleDownload = () => {
+    if (exportUrl) {
+      window.open(exportUrl, '_blank');
+    }
+  };
+
+  const handleEditSlide = () => {
+    if (presentationData && presentationData.slides && presentationData.slides[currentSlideIndex]) {
+      setEditedSlide({
+        ...presentationData.slides[currentSlideIndex],
+        placeholders: { ...presentationData.slides[currentSlideIndex].placeholders }
+      });
+      setEditMode(true);
+    }
+  };
+
+  const handleSaveSlide = async () => {
+    if (!presentationId || !editedSlide) return;
     
-    return () => clearTimeout(timer);
-  }, []);
+    try {
+      setIsSaving(true);
+      
+      // Create a copy of the presentation data
+      const updatedPresentationData = { ...presentationData };
+      
+      // Update the current slide with edited content
+      updatedPresentationData.slides[currentSlideIndex] = editedSlide;
+      
+      // Call the API to update the slide
+      const response = await fetch(`/api/presentations/${presentationId}/slides/${currentSlideIndex}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          placeholders: editedSlide.placeholders
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update slide');
+      }
+      
+      // Update the local state with the edited data
+      setPresentationData(updatedPresentationData);
+      setEditMode(false);
+      setIsSaving(false);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      console.error('Error saving slide:', err);
+      setIsSaving(false);
+    }
+  };
+
+  const updateEditedPlaceholder = (key: string, value: string) => {
+    if (!editedSlide) return;
+    setEditedSlide({
+      ...editedSlide,
+      placeholders: {
+        ...editedSlide.placeholders,
+        [key]: value
+      }
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setEditedSlide(null);
+  };
 
   const nextSlide = () => {
-    if (currentSlide < topics.length - 1) {
-      setCurrentSlide(currentSlide + 1);
+    if (presentationData && presentationData.slides) {
+      if (currentSlideIndex < presentationData.slides.length - 1) {
+        setCurrentSlideIndex(currentSlideIndex + 1);
+        setEditMode(false);
+      }
     }
   };
 
   const prevSlide = () => {
-    if (currentSlide > 0) {
-      setCurrentSlide(currentSlide - 1);
+    if (currentSlideIndex > 0) {
+      setCurrentSlideIndex(currentSlideIndex - 1);
+      setEditMode(false);
     }
   };
 
-  const selectSlide = (index: number) => {
-    setCurrentSlide(index);
+  const goToSlide = (index: number) => {
+    if (index >= 0 && index < (presentationData?.slides?.length || 0)) {
+      setCurrentSlideIndex(index);
+      setEditMode(false);
+    }
   };
 
-  const handleExportClick = () => {
-    setShowExportModal(true);
-  };
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-4xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Loader2 size={40} className="animate-spin text-accent" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">{loadingMessage}</h2>
+          <p className="text-muted-foreground">This may take up to a minute to complete</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="w-full max-w-4xl mx-auto px-4">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 mb-6">
+          <h2 className="text-xl font-bold text-red-500 mb-2">Error</h2>
+          <p>{error}</p>
+          <Button variant="outline" className="mt-4" onClick={() => setError(null)}>
+            Dismiss
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // No presentation data
+  if (!presentationData || !presentationData.slides || presentationData.slides.length === 0) {
+    return (
+      <div className="w-full max-w-4xl mx-auto px-4">
+        <div className="bg-black/60 border border-border rounded-xl p-6 mb-6">
+          <h2 className="text-xl font-bold mb-2">No Presentation Data</h2>
+          <p className="text-muted-foreground mb-4">
+            There's no presentation data available to display.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Get current slide data
+  const currentSlide = presentationData.slides[currentSlideIndex];
+  const slideToDisplay = editMode ? editedSlide : currentSlide;
+  const slidePlaceholders = slideToDisplay?.placeholders || {};
+  const slideLayout = slideToDisplay?.layout || 0;
 
   return (
-    <div className="w-full max-w-6xl flex flex-col space-y-6">
-      {/* App Bar */}
-      <div className="w-full flex justify-between items-center bg-black p-4 rounded-lg">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold gradient-text">Presentation AI</h1>
-        </div>
-        <Button 
-          onClick={handleExportClick} 
-          className="bg-accent hover:bg-accent/80 flex gap-2 items-center"
-        >
-          <Download size={16} /> Export Presentation
-        </Button>
-      </div>
-
-      <div className="w-full flex flex-col md:flex-row gap-6">
-        {/* Left panel - Slide sequence (30% width) */}
-        <div className="w-full md:w-[30%] bg-black p-4 rounded-lg">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">Slide Sequence</h3>
-            <p className="text-sm text-muted-foreground">
-              {topics.length} slides in presentation
-            </p>
-          </div>
-
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-none">
-            {topics.map((topic, index) => (
-              <div
-                key={`slide-${index}`}
-                className={`p-4 glass-panel cursor-pointer transition-all ${
-                  index === currentSlide 
-                    ? "border-accent border-2" 
-                    : "border-white/5 hover:border-white/20"
-                }`}
-                onClick={() => selectSlide(index)}
+    <div className="w-full">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Left panel - Slide structure */}
+        <div className="md:col-span-1">
+          <Card className="bg-black/60 border-border h-full">
+            <CardContent className="p-4">
+              <h3 className="text-lg font-semibold mb-3">Presentation Structure</h3>
+              
+              <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+                {presentationData.slides.map((slide: any, index: number) => {
+                  // Get title based on slide type
+                  const slideTitle = slide.placeholders.CENTER_TITLE || 
+                                  slide.placeholders.TITLE || 
+                                  `Slide ${index + 1}`;
+                  
+                  return (
+                    <div 
+                      key={index}
+                      className={`
+                        p-2 rounded cursor-pointer transition-all
+                        ${currentSlideIndex === index ? 'bg-accent/20 border-l-2 border-accent' : 'bg-black/40 hover:bg-black/30'}
+                      `}
+                      onClick={() => goToSlide(index)}
+                    >
+                      <div className="flex items-center">
+                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium mr-2">
+                          {index + 1}
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="truncate text-sm font-medium">{slideTitle}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {slide.layout === 0 ? 'Title Slide' : 
+                             slide.layout === 1 ? 'Content with Image' : 
+                             slide.layout === 2 ? 'Content' : 'Text Only'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center gap-2" 
+                onClick={handleDownload}
+                disabled={!exportUrl}
               >
-                <div className="flex items-start">
-                  <span className="bg-accent/20 text-white px-2 py-1 rounded-md mr-2 text-xs">
-                    {index + 1}
+                <Download size={16} /> Download Presentation
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Right panel - Slide preview/editor */}
+        <div className="md:col-span-3">
+          <Card className="bg-black/60 border-border">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={prevSlide} 
+                    disabled={currentSlideIndex === 0 || editMode}
+                    size="sm"
+                  >
+                    <ArrowLeft size={16} />
+                  </Button>
+                  <span className="text-sm py-2 px-1">
+                    Slide {currentSlideIndex + 1} of {presentationData.slides.length}
                   </span>
-                  <h4 className="font-medium truncate">{topic.title}</h4>
+                  <Button 
+                    variant="outline" 
+                    onClick={nextSlide} 
+                    disabled={currentSlideIndex === presentationData.slides.length - 1 || editMode}
+                    size="sm"
+                  >
+                    <ArrowRight size={16} />
+                  </Button>
                 </div>
-                <div className="mt-2 pl-8">
-                  <p className="text-xs text-muted-foreground">
-                    {topic.points.length} points
-                  </p>
+                
+                <div>
+                  {editMode ? (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={cancelEdit}
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleSaveSlide}
+                        size="sm"
+                        disabled={isSaving}
+                        className="bg-accent hover:bg-accent/80"
+                      >
+                        {isSaving ? (
+                          <Loader2 size={16} className="animate-spin mr-2" />
+                        ) : (
+                          <Save size={16} className="mr-2" />
+                        )}
+                        Save Changes
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button 
+                      onClick={handleEditSlide}
+                      size="sm"
+                      className="bg-accent hover:bg-accent/80"
+                    >
+                      <Edit size={16} className="mr-2" /> Edit Slide
+                    </Button>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+              
+              <div className="aspect-[16/9] border border-border rounded-lg overflow-hidden">
+                {editMode ? (
+                  // Edit Mode
+                  <div className="h-full bg-black/80 p-6 overflow-y-auto">
+                    {slideLayout === 0 && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Title</label>
+                          <Input
+                            value={slidePlaceholders.CENTER_TITLE || ''}
+                            onChange={(e) => updateEditedPlaceholder('CENTER_TITLE', e.target.value)}
+                            className="bg-black/60 border-border"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Subtitle</label>
+                          <Input
+                            value={slidePlaceholders.SUBTITLE || ''}
+                            onChange={(e) => updateEditedPlaceholder('SUBTITLE', e.target.value)}
+                            className="bg-black/60 border-border"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {(slideLayout === 1 || slideLayout === 2 || slideLayout === 3) && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Title</label>
+                          <Input
+                            value={slidePlaceholders.TITLE || ''}
+                            onChange={(e) => updateEditedPlaceholder('TITLE', e.target.value)}
+                            className="bg-black/60 border-border"
+                          />
+                        </div>
+                        
+                        {slideLayout === 1 && (
+                          <div>
+                            <label className="text-sm font-medium mb-1 block">Image Path</label>
+                            <Input
+                              value={slidePlaceholders.PICTURE || ''}
+                              onChange={(e) => updateEditedPlaceholder('PICTURE', e.target.value)}
+                              className="bg-black/60 border-border"
+                              placeholder="e.g., image.jpg"
+                            />
+                          </div>
+                        )}
+                        
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Content</label>
+                          <Textarea
+                            value={slidePlaceholders.BODY || ''}
+                            onChange={(e) => updateEditedPlaceholder('BODY', e.target.value)}
+                            className="bg-black/60 border-border min-h-[200px]"
+                            placeholder="Use <bullet>Item</bullet> syntax for bullet points"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // View Mode
+                  <div className="h-full bg-black/80 p-6">
+                    {/* Title slide layout */}
+                    {slideLayout === 0 && (
+                      <div className="flex flex-col items-center justify-center h-full text-center">
+                        <h1 className="text-3xl font-bold mb-4">{slidePlaceholders.CENTER_TITLE || "Title Slide"}</h1>
+                        <p className="text-xl text-muted-foreground">{slidePlaceholders.SUBTITLE || "Subtitle"}</p>
+                      </div>
+                    )}
 
-        <Separator orientation="vertical" className="h-auto hidden md:block" />
+                    {/* Content slide with image layout */}
+                    {slideLayout === 1 && (
+                      <div className="flex flex-col h-full">
+                        <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.TITLE || "Slide Title"}</h2>
+                        <div className="grid grid-cols-2 gap-6 flex-grow">
+                          <div className="bg-muted/20 rounded-lg flex items-center justify-center p-4">
+                            <div className="text-sm text-muted-foreground">[Image: {slidePlaceholders.PICTURE || "image.jpg"}]</div>
+                          </div>
+                          <div>
+                            {slidePlaceholders.BODY ? (
+                              <div dangerouslySetInnerHTML={{ 
+                                __html: slidePlaceholders.BODY
+                                  .replace(/<bullet>/g, '<li>')
+                                  .replace(/<\/bullet>/g, '</li>')
+                                  .replace(/\n/g, '<br>') 
+                              }} className="list-disc pl-5" />
+                            ) : (
+                              <p className="text-muted-foreground">Content goes here</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-        {/* Right panel - Slide preview (70% width) */}
-        <div className="w-full md:w-[70%] flex flex-col bg-[#222222] rounded-lg p-4">
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold mb-2 gradient-text">Presentation Preview</h2>
-            <p className="text-muted-foreground">
-              Slide {currentSlide + 1} of {topics.length}
-            </p>
-          </div>
-          
-          <Card className="w-full aspect-[16/9] flex items-center justify-center mb-6 flex-grow bg-black border border-white/10">
-            <CardContent className="p-10 w-full h-full flex flex-col">
-              {isLoading ? (
-                <div className="h-full w-full flex flex-col justify-center items-center space-y-8">
-                  <div className="animate-spin w-12 h-12 border-4 border-accent rounded-full border-t-transparent"></div>
-                  <p className="text-muted-foreground animate-pulse">Generating preview...</p>
-                </div>
-              ) : (
-                <>
-                  <h2 className="text-3xl font-bold mb-6 gradient-text">
-                    {topics[currentSlide].title}
-                  </h2>
-                  <ul className="space-y-4 list-disc pl-6">
-                    {topics[currentSlide].points.map((point, index) => (
-                      <li key={index} className="text-xl animate-enter" style={{ animationDelay: `${index * 0.1}s` }}>
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
+                    {/* Content slide without image layout */}
+                    {(slideLayout === 2 || slideLayout === 3) && (
+                      <div className="flex flex-col h-full">
+                        <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.TITLE || "Slide Title"}</h2>
+                        {slidePlaceholders.BODY ? (
+                          <div dangerouslySetInnerHTML={{ 
+                            __html: slidePlaceholders.BODY
+                              .replace(/<bullet>/g, '<li>')
+                              .replace(/<\/bullet>/g, '</li>')
+                              .replace(/\n/g, '<br>') 
+                          }} className="list-disc pl-5" />
+                        ) : (
+                          <p className="text-muted-foreground">Content goes here</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
           
-          <div className="flex justify-between w-full mb-6">
-            <Button 
-              onClick={prevSlide} 
-              disabled={currentSlide === 0 || isLoading}
-              variant="outline"
-              className="flex gap-2 items-center"
-            >
-              <ArrowLeft size={16} /> Previous
-            </Button>
+          {/* JSON Data Viewer */}
+          <Tabs defaultValue="preview" className="w-full mt-4">
+            <TabsList>
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+              <TabsTrigger value="json">JSON Structure</TabsTrigger>
+            </TabsList>
             
-            <Button 
-              onClick={nextSlide}
-              disabled={currentSlide === topics.length - 1 || isLoading}
-              variant="outline"
-              className="flex gap-2 items-center"
-            >
-              Next <ArrowRight size={16} />
-            </Button>
-          </div>
+            <TabsContent value="json" className="mt-2">
+              <Card className="bg-black/60 border-border">
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium mb-2">Current Slide JSON</h3>
+                  <div className="bg-black/80 rounded-md p-4 overflow-auto max-h-[200px]">
+                    <pre className="text-xs">
+                      {JSON.stringify(currentSlide, null, 2)}
+                    </pre>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="preview" className="mt-2">
+              <Card className="bg-black/60 border-border">
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium mb-2">Slide Navigation</h3>
+                  <div className="flex overflow-x-auto gap-2 pb-2">
+                    {presentationData.slides.map((slide: any, index: number) => (
+                      <div 
+                        key={index}
+                        className={`
+                          cursor-pointer flex-shrink-0 w-16 h-12 border rounded overflow-hidden
+                          ${currentSlideIndex === index ? 'border-accent' : 'border-border'}
+                        `}
+                        onClick={() => goToSlide(index)}
+                      >
+                        <div className="w-full h-full p-1 flex flex-col justify-center items-center text-[8px] text-center">
+                          <div className="truncate w-full">
+                            {index + 1}: {slide.placeholders.CENTER_TITLE || 
+                            slide.placeholders.TITLE || 
+                            `Slide ${index + 1}`}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-
-      {/* Export Modal */}
-      <ExportModal 
-        isOpen={showExportModal} 
-        onClose={() => setShowExportModal(false)} 
-      />
     </div>
   );
 };

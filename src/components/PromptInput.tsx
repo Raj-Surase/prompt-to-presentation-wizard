@@ -1,25 +1,55 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, ListOrdered, LayoutDashboard, Languages } from "lucide-react";
+import { ArrowRight, ListOrdered, LayoutDashboard, Languages, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PromptInputProps {
-  onSubmit: (prompt: string) => void;
+  onSubmit: (response: any) => void;
   isLoading: boolean;
 }
 
 const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
   const [prompt, setPrompt] = useState('');
-  const [slideCount, setSlideCount] = useState('5');
+  const [slideCount, setSlideCount] = useState('15');
   const [presentationSize, setPresentationSize] = useState('16:9');
   const [language, setLanguage] = useState('English');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (prompt.trim()) {
-      onSubmit(prompt.trim());
+      try {
+        setError(null);
+        setIsSubmitting(true);
+        
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: prompt.trim(),
+            number_of_slides: parseInt(slideCount),
+            language: language
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to generate presentation');
+        }
+        
+        const data = await response.json();
+        
+        // Pass the data to the parent component
+        onSubmit(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        console.error('Error generating presentation:', err);
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -32,14 +62,14 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
             className="min-h-32 bg-black/60 text-foreground border-border rounded-xl px-4 py-3 resize-none"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            disabled={isLoading}
+            disabled={isSubmitting || isLoading}
           />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Slides Count Dropdown */}
           <div>
-            <Select value={slideCount} onValueChange={setSlideCount}>
+            <Select value={slideCount} onValueChange={setSlideCount} disabled={isSubmitting || isLoading}>
               <SelectTrigger className="w-full bg-black/60 border-border rounded-lg">
                 <div className="flex items-center gap-2">
                   <ListOrdered size={16} />
@@ -47,18 +77,21 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                {[...Array(10)].map((_, i) => (
-                  <SelectItem key={i + 1} value={(i + 1).toString()}>
-                    {i + 1} slide{i !== 0 ? 's' : ''}
-                  </SelectItem>
-                ))}
+                {[...Array(9)].map((_, i) => {
+                  const count = i + 12; // Start from 12 slides, go to 20
+                  return (
+                    <SelectItem key={count} value={count.toString()}>
+                      {count} slides
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
 
           {/* Presentation Size Dropdown */}
           <div>
-            <Select value={presentationSize} onValueChange={setPresentationSize}>
+            <Select value={presentationSize} onValueChange={setPresentationSize} disabled={isSubmitting || isLoading}>
               <SelectTrigger className="w-full bg-black/60 border-border rounded-lg">
                 <div className="flex items-center gap-2">
                   <LayoutDashboard size={16} />
@@ -74,7 +107,7 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
 
           {/* Language Dropdown */}
           <div>
-            <Select value={language} onValueChange={setLanguage}>
+            <Select value={language} onValueChange={setLanguage} disabled={isSubmitting || isLoading}>
               <SelectTrigger className="w-full bg-black/60 border-border rounded-lg">
                 <div className="flex items-center gap-2">
                   <Languages size={16} />
@@ -86,28 +119,27 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
                 <SelectItem value="Spanish">Spanish</SelectItem>
                 <SelectItem value="French">French</SelectItem>
                 <SelectItem value="German">German</SelectItem>
-                <SelectItem value="Italian">Italian</SelectItem>
-                <SelectItem value="Portuguese">Portuguese</SelectItem>
-                <SelectItem value="Dutch">Dutch</SelectItem>
-                <SelectItem value="Russian">Russian</SelectItem>
-                <SelectItem value="Japanese">Japanese</SelectItem>
-                <SelectItem value="Korean">Korean</SelectItem>
-                <SelectItem value="Chinese">Chinese</SelectItem>
-                <SelectItem value="Arabic">Arabic</SelectItem>
-                <SelectItem value="Hindi">Hindi</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
         
+        {error && (
+          <div className="text-red-500 bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-sm">
+            <p className="font-medium">Error</p>
+            <p>{error}</p>
+          </div>
+        )}
+        
         <Button 
           type="submit" 
-          disabled={prompt.trim() === '' || isLoading}
-          className="w-full rounded-xl bg-accent hover:bg-accent/80 transition-all"
+          disabled={prompt.trim() === '' || isSubmitting || isLoading}
+          className="w-full rounded-xl bg-accent hover:bg-accent/80 transition-all h-12"
         >
-          {isLoading ? (
+          {isSubmitting ? (
             <span className="flex items-center gap-2">
-              <span className="animate-pulse-slow">Generating presentation</span>
+              <Loader2 size={16} className="animate-spin" />
+              Generating presentation...
             </span>
           ) : (
             <span className="flex items-center gap-2">
