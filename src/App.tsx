@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import CreatePresentation from "./pages/CreatePresentation";
 import EditTopics from "./pages/EditTopics";
 import PreviewPresentation from "./pages/PreviewPresentation";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/create" element={<CreatePresentation />} />
             <Route path="/edit" element={<EditTopics />} />
             <Route path="/preview" element={<PreviewPresentation />} />
+            <Route path="/auth" element={<Auth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
