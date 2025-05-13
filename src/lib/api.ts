@@ -25,7 +25,6 @@ api.interceptors.request.use(
         const { access_token } = JSON.parse(session);
         if (access_token) {
           config.headers.Authorization = `Bearer ${access_token}`;
-
         }
       } catch (error) {
         console.error('Failed to parse auth session:', error);

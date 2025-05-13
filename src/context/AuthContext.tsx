@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const validateSession = async (token: string) => {
     try {
       setIsLoading(true);
-      const response = await api.get<SessionResponse>('/session');
+      const response = await api.get<SessionResponse>('/api/session');
       setUser(response.data.user);
       return true;
     } catch (err) {
@@ -205,7 +205,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
       
       // Attempt to sign out on the server
-      await api.post('/signout');
+      await api.post('/api/signout');
     } catch (err: any) {
       console.error('Sign out error on server:', err);
       // We'll still clear local state even if server signout fails
