@@ -1,28 +1,114 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Github, Mail } from 'lucide-react';
+import { Github, Loader2 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import Navbar from '@/components/Navbar';
+import { useAuth } from '@/context/AuthContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import GoogleAuth from '@/components/GoogleAuth';
 
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
+  const { user, isLoading, error, signUp, signIn, clearError } = useAuth();
+  
   const [isSignUp, setIsSignUp] = useState(location.search.includes('mode=signup'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [formErrors, setFormErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
   
-  const handleSubmit = (e: React.FormEvent) => {
+  // Check if we have a 'from' location to redirect to after login
+  const from = (location.state as any)?.from?.pathname || '/';
+  
+  // If already authenticated, redirect to the 'from' page or home
+  useEffect(() => {
+    if (user && !isLoading) {
+      navigate(from, { replace: true });
+    }
+  }, [user, isLoading, navigate, from]);
+  
+  // Show toast for errors
+  useEffect(() => {
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: error,
+      });
+      
+      // Clear error after showing toast
+      clearError();
+    }
+  }, [error, toast, clearError]);
+  
+  // Validate form inputs
+  const validateForm = () => {
+    const errors: {
+      email?: string;
+      password?: string;
+    } = {};
+    let isValid = true;
+    
+    // Validate email
+    if (!email) {
+      errors.email = "Email is required";
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = "Email is invalid";
+      isValid = false;
+    }
+    
+    // Validate password
+    if (!password) {
+      errors.password = "Password is required";
+      isValid = false;
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+      isValid = false;
+    }
+    
+    setFormErrors(errors);
+    return isValid;
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // We'll explain why we can't implement authentication yet
-    alert('Supabase integration is required to implement authentication.');
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      if (isSignUp) {
+        await signUp(email, password);
+        toast({
+          title: "Account created",
+          description: "Your account has been created successfully!",
+        });
+      } else {
+        await signIn(email, password);
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in successfully.",
+        });
+      }
+    } catch (err) {
+      // Error is already handled in the auth context
+    }
   };
   
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
+    clearError();
+    setFormErrors({});
   };
 
   return (
@@ -40,19 +126,15 @@ const Auth = () => {
             <Button 
               variant="outline" 
               className="w-full flex items-center justify-center gap-2"
-              onClick={() => alert('Supabase integration is required to implement authentication.')}
+              onClick={() => toast({
+                description: "GitHub integration not implemented yet."
+              })}
+              disabled={isLoading}
             >
               <Github size={18} />
               <span>Continue with GitHub</span>
             </Button>
-            <Button 
-              variant="outline" 
-              className="w-full flex items-center justify-center gap-2"
-              onClick={() => alert('Supabase integration is required to implement authentication.')}
-            >
-              <Mail size={18} />
-              <span>Continue with Google</span>
-            </Button>
+            <GoogleAuth />
           </div>
           
           <div className="relative my-6">
@@ -74,34 +156,68 @@ const Auth = () => {
                   value={name} 
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your full name"
+                  disabled={isLoading}
                 />
               </div>
             )}
             
             <div className="space-y-1">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email" className="flex justify-between">
+                <span>Email Address</span>
+                {formErrors.email && <span className="text-red-500 text-xs">{formErrors.email}</span>}
+              </Label>
               <Input 
                 id="email" 
                 type="email" 
                 value={email} 
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (formErrors.email) {
+                    setFormErrors(prev => ({ ...prev, email: undefined }));
+                  }
+                }}
+                className={formErrors.email ? "border-red-500" : ""}
                 placeholder="Enter your email"
+                disabled={isLoading}
+                required
               />
             </div>
             
             <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="flex justify-between">
+                <span>Password</span>
+                {formErrors.password && <span className="text-red-500 text-xs">{formErrors.password}</span>}
+              </Label>
               <Input 
                 id="password" 
                 type="password" 
                 value={password} 
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (formErrors.password) {
+                    setFormErrors(prev => ({ ...prev, password: undefined }));
+                  }
+                }}
+                className={formErrors.password ? "border-red-500" : ""}
                 placeholder="Enter your password"
+                disabled={isLoading}
+                required
               />
             </div>
             
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
-              {isSignUp ? 'Sign Up' : 'Log In'}
+            <Button 
+              type="submit" 
+              className="w-full bg-accent hover:bg-accent/90"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                isSignUp ? 'Sign Up' : 'Log In'
+              )}
             </Button>
           </form>
           
@@ -113,6 +229,7 @@ const Auth = () => {
               <button 
                 onClick={toggleMode} 
                 className="text-accent hover:underline"
+                disabled={isLoading}
               >
                 {isSignUp ? 'Log In' : 'Sign Up'}
               </button>
