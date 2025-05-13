@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,7 +60,7 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
         <div className="relative">
           <Textarea
             placeholder="Describe your presentation topic and content here..."
-            className="min-h-32 bg-black/60 text-foreground border-border rounded-xl px-4 py-3 resize-none"
+            className="min-h-32 bg-black text-white border-border rounded-xl px-4 py-3 resize-none placeholder:text-gray-300"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={isSubmitting || isLoading}
@@ -70,7 +71,7 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
           {/* Slides Count Dropdown */}
           <div>
             <Select value={slideCount} onValueChange={setSlideCount} disabled={isSubmitting || isLoading}>
-              <SelectTrigger className="w-full bg-black/60 border-border rounded-lg">
+              <SelectTrigger className="w-full bg-black text-white border-border rounded-lg">
                 <div className="flex items-center gap-2">
                   <ListOrdered size={16} />
                   <span>Slides: {slideCount}</span>
@@ -92,7 +93,7 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
           {/* Presentation Size Dropdown */}
           <div>
             <Select value={presentationSize} onValueChange={setPresentationSize} disabled={isSubmitting || isLoading}>
-              <SelectTrigger className="w-full bg-black/60 border-border rounded-lg">
+              <SelectTrigger className="w-full bg-black text-white border-border rounded-lg">
                 <div className="flex items-center gap-2">
                   <LayoutDashboard size={16} />
                   <span>Size: {presentationSize}</span>
@@ -108,7 +109,7 @@ const PromptInput: React.FC<PromptInputProps> = ({ onSubmit, isLoading }) => {
           {/* Language Dropdown */}
           <div>
             <Select value={language} onValueChange={setLanguage} disabled={isSubmitting || isLoading}>
-              <SelectTrigger className="w-full bg-black/60 border-border rounded-lg">
+              <SelectTrigger className="w-full bg-black text-white border-border rounded-lg">
                 <div className="flex items-center gap-2">
                   <Languages size={16} />
                   <span>Language</span>

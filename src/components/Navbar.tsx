@@ -27,18 +27,10 @@ const Navbar = () => {
           </Button>
           
           <Button 
-            variant="outline"
             onClick={() => navigate('/auth')}
-            className="font-medium"
-          >
-            Login
-          </Button>
-          
-          <Button 
-            onClick={() => navigate('/auth?mode=signup')}
             className="bg-accent hover:bg-accent/90 font-medium"
           >
-            Sign Up
+            Login
           </Button>
         </div>
       </div>

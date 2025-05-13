@@ -26,7 +26,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen mesh-gradient flex flex-col">
+    <div className="min-h-screen noise-bg flex flex-col">
       <Navbar />
       
       <div className="flex-1 flex items-center justify-center p-4">
