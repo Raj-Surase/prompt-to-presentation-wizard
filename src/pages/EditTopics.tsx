@@ -87,10 +87,10 @@ const EditTopics = () => {
       let title = 'Untitled Slide';
       
       if (slide.placeholders) {
-        if (slide.layout === 0 && slide.placeholders.CENTER_TITLE) {
-          title = slide.placeholders.CENTER_TITLE;
-        } else if (slide.placeholders.TITLE) {
-          title = slide.placeholders.TITLE;
+        if (slide.layout === 0 && slide.placeholders["presentation-topic"]) {
+          title = slide.placeholders["presentation-topic"];
+        } else if (slide.placeholders["title"]) {
+          title = slide.placeholders["title"];
         }
       }
       
