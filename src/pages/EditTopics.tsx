@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { usePresentationContext } from '@/context/PresentationContext';
 import PresentationTopicEditor from '@/components/PresentationTopicEditor';
@@ -146,9 +147,9 @@ const EditTopics = () => {
   };
 
   return (
-    <div className="min-h-screen mesh-gradient flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
       <div className="text-center mb-10">
-        <h1 className="text-4xl md:text-5xl font-bold mb-3 gradient-text">
+        <h1 className="text-4xl md:text-5xl font-bold mb-3 text-black">
           Presentation AI
         </h1>
         <p className="text-muted-foreground max-w-md mx-auto">
@@ -157,19 +158,19 @@ const EditTopics = () => {
       </div>
       
       {isLoading ? (
-        <div className="bg-black/60 border border-border rounded-xl p-8 mb-5 w-full max-w-2xl flex flex-col items-center">
+        <div className="bg-white border border-gray-300 rounded-xl p-8 mb-5 w-full max-w-2xl flex flex-col items-center shadow-md">
           <div className="flex justify-center mb-4">
-            <Loader2 size={40} className="animate-spin text-accent" />
+            <Loader2 size={40} className="animate-spin text-black" />
           </div>
-          <h2 className="text-xl font-bold mb-2">{loadingMessage}</h2>
-          <p className="text-muted-foreground text-center max-w-md">
+          <h2 className="text-xl font-bold mb-2 text-black">{loadingMessage}</h2>
+          <p className="text-gray-600 text-center max-w-md">
             This process may take up to a minute to complete. Please be patient while we generate your presentation.
           </p>
         </div>
       ) : (
         <>
           {error && (
-            <div className="text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
+            <div className="text-red-500 bg-red-50 border border-red-300 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
               <p className="font-medium">Error</p>
               <p>{error}</p>
             </div>

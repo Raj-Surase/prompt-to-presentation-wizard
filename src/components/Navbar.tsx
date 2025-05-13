@@ -8,7 +8,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   
   return (
-    <nav className="border-b border-gray-200 py-4 px-6 bg-white/80 backdrop-blur-sm w-full">
+    <nav className="border-b border-gray-300 py-4 px-6 bg-white w-full shadow-sm">
       <div className="container mx-auto flex justify-between items-center">
         {/* Logo and Title */}
         <Link to="/" className="flex items-center gap-2">
@@ -21,14 +21,14 @@ const Navbar = () => {
           <Button 
             variant="ghost" 
             onClick={() => navigate('/create')}
-            className="font-medium"
+            className="font-medium text-black"
           >
             Create
           </Button>
           
           <Button 
             onClick={() => navigate('/auth')}
-            className="bg-accent hover:bg-accent/90 font-medium"
+            className="bg-black hover:bg-black/90 font-medium text-white"
           >
             Login
           </Button>

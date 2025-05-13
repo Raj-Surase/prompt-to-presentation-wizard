@@ -185,12 +185,12 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Left panel - Slide structure */}
         <div className="md:col-span-1">
-          <Card className="bg-black/60 border-border h-full">
+          <Card className="bg-white border-gray-300 h-full shadow-sm">
             <CardContent className="p-4">
-              <h3 className="text-lg font-semibold mb-3">Presentation Structure</h3>
+              <h3 className="text-lg font-semibold mb-3 text-black">Presentation Structure</h3>
               
               <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-                {presentationData.slides.map((slide: any, index: number) => {
+                {presentationData?.slides?.map((slide: any, index: number) => {
                   // Get title based on slide layout
                   let slideTitle = `Slide ${index + 1}`;
                   
@@ -205,17 +205,17 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                       key={index}
                       className={`
                         p-2 rounded cursor-pointer transition-all
-                        ${currentSlideIndex === index ? 'bg-accent/20 border-l-2 border-accent' : 'bg-black/40 hover:bg-black/30'}
+                        ${currentSlideIndex === index ? 'bg-gray-200 border-l-2 border-black' : 'bg-gray-100 hover:bg-gray-200'}
                       `}
                       onClick={() => goToSlide(index)}
                     >
                       <div className="flex items-center">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium mr-2">
+                        <div className="w-6 h-6 rounded-full bg-black/10 flex items-center justify-center text-xs font-medium mr-2">
                           {index + 1}
                         </div>
                         <div className="overflow-hidden">
-                          <p className="truncate text-sm font-medium">{slideTitle}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="truncate text-sm font-medium text-black">{slideTitle}</p>
+                          <p className="text-xs text-gray-500">
                             {slide.layout === 0 ? 'Title Slide' : 
                              slide.layout === 1 ? 'Content with Image' : 
                              slide.layout === 2 ? 'Content with Image' :
@@ -233,11 +233,11 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                 })}
               </div>
               
-              <Separator className="my-4" />
+              <Separator className="my-4 bg-gray-300" />
               
               <Button 
                 variant="outline" 
-                className="w-full flex items-center gap-2" 
+                className="w-full flex items-center gap-2 border-gray-300 text-black" 
                 onClick={handleDownload}
                 disabled={!exportUrl}
               >
@@ -249,7 +249,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
         
         {/* Right panel - Slide preview/editor */}
         <div className="md:col-span-3">
-          <Card className="bg-black/60 border-border">
+          <Card className="bg-white border-gray-300 shadow-sm">
             <CardContent className="p-4">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex gap-2">
@@ -258,17 +258,19 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                     onClick={prevSlide} 
                     disabled={currentSlideIndex === 0 || editMode}
                     size="sm"
+                    className="border-gray-300 text-black"
                   >
                     <ArrowLeft size={16} />
                   </Button>
-                  <span className="text-sm py-2 px-1">
-                    Slide {currentSlideIndex + 1} of {presentationData.slides.length}
+                  <span className="text-sm py-2 px-1 text-black">
+                    Slide {currentSlideIndex + 1} of {presentationData?.slides?.length || 0}
                   </span>
                   <Button 
                     variant="outline" 
                     onClick={nextSlide} 
-                    disabled={currentSlideIndex === presentationData.slides.length - 1 || editMode}
+                    disabled={currentSlideIndex === (presentationData?.slides?.length || 0) - 1 || editMode}
                     size="sm"
+                    className="border-gray-300 text-black"
                   >
                     <ArrowRight size={16} />
                   </Button>
@@ -281,6 +283,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         variant="outline" 
                         onClick={cancelEdit}
                         size="sm"
+                        className="border-gray-300 text-black"
                       >
                         Cancel
                       </Button>
@@ -288,7 +291,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         onClick={handleSaveSlide}
                         size="sm"
                         disabled={isSaving}
-                        className="bg-accent hover:bg-accent/80"
+                        className="bg-black hover:bg-black/80 text-white"
                       >
                         {isSaving ? (
                           <Loader2 size={16} className="animate-spin mr-2" />
@@ -302,7 +305,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                     <Button 
                       onClick={handleEditSlide}
                       size="sm"
-                      className="bg-accent hover:bg-accent/80"
+                      className="bg-black hover:bg-black/80 text-white"
                     >
                       <Edit size={16} className="mr-2" /> Edit Slide
                     </Button>
@@ -310,34 +313,34 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                 </div>
               </div>
               
-              <div className="aspect-[16/9] border border-border rounded-lg overflow-hidden">
+              <div className="aspect-[16/9] border border-gray-300 rounded-lg overflow-hidden">
                 {editMode ? (
                   // Edit Mode
-                  <div className="h-full bg-black/80 p-6 overflow-y-auto">
+                  <div className="h-full bg-gray-50 p-6 overflow-y-auto">
                     {slideLayout === 0 && (
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium mb-1 block">Title</label>
+                          <label className="text-sm font-medium mb-1 block text-black">Title</label>
                           <Input
                             value={slidePlaceholders["presentation-topic"] || ''}
                             onChange={(e) => updateEditedPlaceholder("presentation-topic", e.target.value)}
-                            className="bg-black/60 border-border"
+                            className="bg-white border-gray-400 text-black"
                           />
                         </div>
                         <div>
-                          <label className="text-sm font-medium mb-1 block">Subtitle</label>
+                          <label className="text-sm font-medium mb-1 block text-black">Subtitle</label>
                           <Input
                             value={slidePlaceholders["topic-subtitle"] || ''}
                             onChange={(e) => updateEditedPlaceholder("topic-subtitle", e.target.value)}
-                            className="bg-black/60 border-border"
+                            className="bg-white border-gray-400 text-black"
                           />
                         </div>
                         <div>
-                          <label className="text-sm font-medium mb-1 block">Quote</label>
+                          <label className="text-sm font-medium mb-1 block text-black">Quote</label>
                           <Input
                             value={slidePlaceholders["quote"] || ''}
                             onChange={(e) => updateEditedPlaceholder("quote", e.target.value)}
-                            className="bg-black/60 border-border"
+                            className="bg-white border-gray-400 text-black"
                           />
                         </div>
                       </div>
@@ -346,22 +349,22 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                     {(slideLayout >= 1 && slideLayout <= 8 && slideLayout !== 4) && (
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium mb-1 block">Title</label>
+                          <label className="text-sm font-medium mb-1 block text-black">Title</label>
                           <Input
                             value={slidePlaceholders["title"] || ''}
                             onChange={(e) => updateEditedPlaceholder("title", e.target.value)}
-                            className="bg-black/60 border-border"
+                            className="bg-white border-gray-400 text-black"
                           />
                         </div>
                         
                         {/* Layout 1, 2, 6: Content */}
                         {(slideLayout === 1 || slideLayout === 2) && (
                           <div>
-                            <label className="text-sm font-medium mb-1 block">Content</label>
+                            <label className="text-sm font-medium mb-1 block text-black">Content</label>
                             <Textarea
                               value={slidePlaceholders["content"] || ''}
                               onChange={(e) => updateEditedPlaceholder("content", e.target.value)}
-                              className="bg-black/60 border-border min-h-[200px]"
+                              className="bg-white border-gray-400 text-black min-h-[200px]"
                               placeholder="Use <bullet>Item</bullet> syntax for bullet points"
                             />
                           </div>
@@ -370,11 +373,11 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         {/* Layout 2, 5, 8: Image */}
                         {(slideLayout === 2 || slideLayout === 5 || slideLayout === 8) && (
                           <div>
-                            <label className="text-sm font-medium mb-1 block">Image Path</label>
+                            <label className="text-sm font-medium mb-1 block text-black">Image Path</label>
                             <Input
                               value={slidePlaceholders["image"] || ''}
                               onChange={(e) => updateEditedPlaceholder("image", e.target.value)}
-                              className="bg-black/60 border-border"
+                              className="bg-white border-gray-400 text-black"
                               placeholder="e.g., image.jpg"
                             />
                           </div>
@@ -383,11 +386,11 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         {/* Layout 3: Body */}
                         {slideLayout === 3 && (
                           <div>
-                            <label className="text-sm font-medium mb-1 block">Body</label>
+                            <label className="text-sm font-medium mb-1 block text-black">Body</label>
                             <Textarea
                               value={slidePlaceholders["body"] || ''}
                               onChange={(e) => updateEditedPlaceholder("body", e.target.value)}
-                              className="bg-black/60 border-border min-h-[200px]"
+                              className="bg-white border-gray-400 text-black min-h-[200px]"
                               placeholder="Use <bullet>Item</bullet> syntax for bullet points"
                             />
                           </div>
@@ -397,20 +400,20 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         {slideLayout === 6 && (
                           <>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">Content 1</label>
+                              <label className="text-sm font-medium mb-1 block text-black">Content 1</label>
                               <Textarea
                                 value={slidePlaceholders["content-1"] || ''}
                                 onChange={(e) => updateEditedPlaceholder("content-1", e.target.value)}
-                                className="bg-black/60 border-border min-h-[150px]"
+                                className="bg-white border-gray-400 text-black min-h-[150px]"
                                 placeholder="Use <bullet>Item</bullet> syntax for bullet points"
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">Content 2</label>
+                              <label className="text-sm font-medium mb-1 block text-black">Content 2</label>
                               <Textarea
                                 value={slidePlaceholders["content-2"] || ''}
                                 onChange={(e) => updateEditedPlaceholder("content-2", e.target.value)}
-                                className="bg-black/60 border-border min-h-[150px]"
+                                className="bg-white border-gray-400 text-black min-h-[150px]"
                                 placeholder="Use <bullet>Item</bullet> syntax for bullet points"
                               />
                             </div>
@@ -421,36 +424,36 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         {slideLayout === 7 && (
                           <>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">Compare Title 1</label>
+                              <label className="text-sm font-medium mb-1 block text-black">Compare Title 1</label>
                               <Input
                                 value={slidePlaceholders["compare-title-1"] || ''}
                                 onChange={(e) => updateEditedPlaceholder("compare-title-1", e.target.value)}
-                                className="bg-black/60 border-border"
+                                className="bg-white border-gray-400 text-black"
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">Compare Content 1</label>
+                              <label className="text-sm font-medium mb-1 block text-black">Compare Content 1</label>
                               <Textarea
                                 value={slidePlaceholders["compare-content-1"] || ''}
                                 onChange={(e) => updateEditedPlaceholder("compare-content-1", e.target.value)}
-                                className="bg-black/60 border-border min-h-[100px]"
+                                className="bg-white border-gray-400 text-black min-h-[100px]"
                                 placeholder="Use <bullet>Item</bullet> syntax for bullet points"
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">Compare Title 2</label>
+                              <label className="text-sm font-medium mb-1 block text-black">Compare Title 2</label>
                               <Input
                                 value={slidePlaceholders["compare-title-2"] || ''}
                                 onChange={(e) => updateEditedPlaceholder("compare-title-2", e.target.value)}
-                                className="bg-black/60 border-border"
+                                className="bg-white border-gray-400 text-black"
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">Compare Content 2</label>
+                              <label className="text-sm font-medium mb-1 block text-black">Compare Content 2</label>
                               <Textarea
                                 value={slidePlaceholders["compare-content-2"] || ''}
                                 onChange={(e) => updateEditedPlaceholder("compare-content-2", e.target.value)}
-                                className="bg-black/60 border-border min-h-[100px]"
+                                className="bg-white border-gray-400 text-black min-h-[100px]"
                                 placeholder="Use <bullet>Item</bullet> syntax for bullet points"
                               />
                             </div>
@@ -460,11 +463,11 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         {/* Layout 8: Image with content */}
                         {slideLayout === 8 && (
                           <div>
-                            <label className="text-sm font-medium mb-1 block">Content</label>
+                            <label className="text-sm font-medium mb-1 block text-black">Content</label>
                             <Textarea
                               value={slidePlaceholders["content"] || ''}
                               onChange={(e) => updateEditedPlaceholder("content", e.target.value)}
-                              className="bg-black/60 border-border min-h-[150px]"
+                              className="bg-white border-gray-400 text-black min-h-[150px]"
                               placeholder="Use <bullet>Item</bullet> syntax for bullet points"
                             />
                           </div>
@@ -476,11 +479,11 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                     {slideLayout === 4 && (
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium mb-1 block">Title</label>
+                          <label className="text-sm font-medium mb-1 block text-black">Title</label>
                           <Input
                             value={slidePlaceholders["title"] || ''}
                             onChange={(e) => updateEditedPlaceholder("title", e.target.value)}
-                            className="bg-black/60 border-border"
+                            className="bg-white border-gray-400 text-black"
                           />
                         </div>
                       </div>
@@ -488,7 +491,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   </div>
                 ) : (
                   // View Mode
-                  <div className="h-full bg-black/80 p-6">
+                  <div className="h-full bg-white p-6 border-t border-gray-300">
                     {/* Layout 0: Title slide */}
                     {slideLayout === 0 && (
                       <div className="flex flex-col items-center justify-center h-full text-center">
@@ -676,17 +679,17 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
           
           {/* JSON Data Viewer */}
           <Tabs defaultValue="preview" className="w-full mt-4">
-            <TabsList>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-              <TabsTrigger value="json">JSON Structure</TabsTrigger>
+            <TabsList className="border-b border-gray-300 bg-white">
+              <TabsTrigger value="preview" className="text-black">Preview</TabsTrigger>
+              <TabsTrigger value="json" className="text-black">JSON Structure</TabsTrigger>
             </TabsList>
             
             <TabsContent value="json" className="mt-2">
-              <Card className="bg-black/60 border-border">
+              <Card className="bg-white border-gray-300 shadow-sm">
                 <CardContent className="p-4">
-                  <h3 className="text-sm font-medium mb-2">Current Slide JSON</h3>
-                  <div className="bg-black/80 rounded-md p-4 overflow-auto max-h-[200px]">
-                    <pre className="text-xs">
+                  <h3 className="text-sm font-medium mb-2 text-black">Current Slide JSON</h3>
+                  <div className="bg-gray-50 rounded-md p-4 overflow-auto max-h-[200px] border border-gray-300">
+                    <pre className="text-xs text-black">
                       {JSON.stringify(currentSlide, null, 2)}
                     </pre>
                   </div>
@@ -695,11 +698,11 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
             </TabsContent>
             
             <TabsContent value="preview" className="mt-2">
-              <Card className="bg-black/60 border-border">
+              <Card className="bg-white border-gray-300 shadow-sm">
                 <CardContent className="p-4">
-                  <h3 className="text-sm font-medium mb-2">Slide Navigation</h3>
+                  <h3 className="text-sm font-medium mb-2 text-black">Slide Navigation</h3>
                   <div className="flex overflow-x-auto gap-2 pb-2">
-                    {presentationData.slides.map((slide: any, index: number) => {
+                    {presentationData?.slides?.map((slide: any, index: number) => {
                       // Get title based on slide layout
                       let slideTitle = `Slide ${index + 1}`;
                       
@@ -714,11 +717,11 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                           key={index}
                           className={`
                             cursor-pointer flex-shrink-0 w-16 h-12 border rounded overflow-hidden
-                            ${currentSlideIndex === index ? 'border-accent' : 'border-border'}
+                            ${currentSlideIndex === index ? 'border-black' : 'border-gray-300'}
                           `}
                           onClick={() => goToSlide(index)}
                         >
-                          <div className="w-full h-full p-1 flex flex-col justify-center items-center text-[8px] text-center">
+                          <div className="w-full h-full p-1 flex flex-col justify-center items-center text-[8px] text-center bg-white text-black">
                             <div className="truncate w-full">
                               {index + 1}: {slideTitle}
                             </div>
