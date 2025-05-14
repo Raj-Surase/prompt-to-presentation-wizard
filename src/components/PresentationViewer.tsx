@@ -7,6 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import api from '@/lib/api';
+import { updateSlideContent, getDownloadUrl, downloadPresentation } from '@/lib/presentationService';
+import { useToast } from '@/components/ui/use-toast';
 
 interface PresentationViewerProps {
   topics: any;
@@ -15,29 +19,75 @@ interface PresentationViewerProps {
 }
 
 const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExport, presentationId }) => {
+  const { toast } = useToast();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [presentationData, setPresentationData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('Loading your presentation...');
   const [editMode, setEditMode] = useState(false);
   const [editedSlide, setEditedSlide] = useState<any>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     if (topics) {
       setPresentationData(topics);
       
       if (presentationId) {
-        setExportUrl(`/api/download/${presentationId}`);
+        setExportUrl(getDownloadUrl(presentationId));
       }
     }
   }, [topics, presentationId]);
 
-  const handleDownload = () => {
-    if (exportUrl) {
-      window.open(exportUrl, '_blank');
+  // Hide success message after 3 seconds
+  useEffect(() => {
+    if (saveSuccess) {
+      const timer = setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [saveSuccess]);
+
+  const handleDownload = async () => {
+    if (!presentationId) return;
+    
+    try {
+      setIsDownloading(true);
+      
+      // Use the authenticated download method
+      const blob = await downloadPresentation(presentationId);
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element and trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `presentation_${presentationId}.pptx`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Download Started",
+        description: "Your presentation is being downloaded."
+      });
+    } catch (err) {
+      console.error('Error downloading presentation:', err);
+      toast({
+        variant: "destructive",
+        title: "Download Failed",
+        description: "Could not download the presentation. Please try again."
+      });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -63,26 +113,19 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
       // Update the current slide with edited content
       updatedPresentationData.slides[currentSlideIndex] = editedSlide;
       
-      // Call the API to update the slide
-      const response = await fetch(`/api/presentations/${presentationId}/slides/${currentSlideIndex}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          placeholders: editedSlide.placeholders
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update slide');
-      }
+      // Call the API to update the slide using the service function 
+      // which handles authentication headers
+      await updateSlideContent(
+        presentationId,
+        currentSlideIndex,
+        editedSlide.placeholders
+      );
       
       // Update the local state with the edited data
       setPresentationData(updatedPresentationData);
       setEditMode(false);
       setIsSaving(false);
+      setSaveSuccess(true);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -128,6 +171,18 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
       setCurrentSlideIndex(index);
       setEditMode(false);
     }
+  };
+
+  // Helper function to get title of slide from placeholders
+  const getSlideTitle = (slide: any) => {
+    const placeholders = slide?.placeholders || {};
+    
+    // Check for title in different formats based on layout
+    if (slide.layout === 0) {
+      return placeholders['presentation-topic'] || placeholders['topic-title'] || 'Title Slide';
+    }
+    
+    return placeholders.title || 'Untitled Slide';
   };
 
   // Loading state
@@ -180,6 +235,211 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
   const slidePlaceholders = slideToDisplay?.placeholders || {};
   const slideLayout = slideToDisplay?.layout || 0;
 
+  // Determine which placeholders are used by this slide layout
+  const getPlaceholderInputs = () => {
+    const inputs = [];
+    
+    // Add all available placeholders for the current slide layout
+    Object.keys(slidePlaceholders).forEach(key => {
+      inputs.push(
+        <div key={key}>
+          <label className="text-sm font-medium mb-1 block capitalize">{key.replace(/-/g, ' ')}</label>
+          {key.includes('content') || key.includes('body') ? (
+            <Textarea
+              value={slidePlaceholders[key] || ''}
+              onChange={(e) => updateEditedPlaceholder(key, e.target.value)}
+              className="bg-black/60 border-border min-h-[200px]"
+              placeholder="Use <bullet>Item</bullet> syntax for bullet points"
+            />
+          ) : (
+            <Input
+              value={slidePlaceholders[key] || ''}
+              onChange={(e) => updateEditedPlaceholder(key, e.target.value)}
+              className="bg-black/60 border-border"
+            />
+          )}
+        </div>
+      );
+    });
+    
+    return inputs;
+  };
+
+  // Helper function to render slide content based on layout
+  const renderSlideContent = () => {
+    switch (slideLayout) {
+      case 0: // Title slide
+        return (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <h1 className="text-3xl font-bold mb-4">{slidePlaceholders['presentation-topic'] || "Title Slide"}</h1>
+            <p className="text-xl text-muted-foreground">{slidePlaceholders['topic-subtitle'] || "Subtitle"}</p>
+            {slidePlaceholders['quote'] && (
+              <p className="mt-6 italic text-muted-foreground">"{slidePlaceholders['quote']}"</p>
+            )}
+          </div>
+        );
+      case 1: // Content slide
+        return (
+          <div className="flex flex-col h-full">
+            <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.title || "Slide Title"}</h2>
+            {slidePlaceholders.content ? (
+              <div dangerouslySetInnerHTML={{ 
+                __html: slidePlaceholders.content
+                  .replace(/<bullet>/g, '<li>')
+                  .replace(/<\/bullet>/g, '</li>')
+                  .replace(/\n/g, '<br>') 
+              }} className="list-disc pl-5" />
+            ) : (
+              <p className="text-muted-foreground">Content goes here</p>
+            )}
+          </div>
+        );
+      case 2: // Content with image
+        return (
+          <div className="flex flex-col h-full">
+            <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.title || "Slide Title"}</h2>
+            <div className="grid grid-cols-2 gap-6 flex-grow">
+              <div>
+                {slidePlaceholders.content ? (
+                  <div dangerouslySetInnerHTML={{ 
+                    __html: slidePlaceholders.content
+                      .replace(/<bullet>/g, '<li>')
+                      .replace(/<\/bullet>/g, '</li>')
+                      .replace(/\n/g, '<br>') 
+                  }} className="list-disc pl-5" />
+                ) : (
+                  <p className="text-muted-foreground">Content goes here</p>
+                )}
+              </div>
+              <div className="bg-muted/20 rounded-lg flex items-center justify-center p-4">
+                <div className="text-sm text-muted-foreground">[Image: {slidePlaceholders.image || "image.jpg"}]</div>
+              </div>
+            </div>
+          </div>
+        );
+      case 3: // Text only
+        return (
+          <div className="flex flex-col h-full">
+            <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.title || "Slide Title"}</h2>
+            {slidePlaceholders.body ? (
+              <div dangerouslySetInnerHTML={{ 
+                __html: slidePlaceholders.body
+                  .replace(/<bullet>/g, '<li>')
+                  .replace(/<\/bullet>/g, '</li>')
+                  .replace(/\n/g, '<br>') 
+              }} className="list-disc pl-5" />
+            ) : (
+              <p className="text-muted-foreground">Body content goes here</p>
+            )}
+          </div>
+        );
+      case 6: // Two column content
+        return (
+          <div className="flex flex-col h-full">
+            <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.title || "Slide Title"}</h2>
+            <div className="grid grid-cols-2 gap-6 flex-grow">
+              <div>
+                {slidePlaceholders['content-1'] ? (
+                  <div dangerouslySetInnerHTML={{ 
+                    __html: slidePlaceholders['content-1']
+                      .replace(/<bullet>/g, '<li>')
+                      .replace(/<\/bullet>/g, '</li>')
+                      .replace(/\n/g, '<br>') 
+                  }} className="list-disc pl-5" />
+                ) : (
+                  <p className="text-muted-foreground">Left content</p>
+                )}
+              </div>
+              <div>
+                {slidePlaceholders['content-2'] ? (
+                  <div dangerouslySetInnerHTML={{ 
+                    __html: slidePlaceholders['content-2']
+                      .replace(/<bullet>/g, '<li>')
+                      .replace(/<\/bullet>/g, '</li>')
+                      .replace(/\n/g, '<br>') 
+                  }} className="list-disc pl-5" />
+                ) : (
+                  <p className="text-muted-foreground">Right content</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case 7: // Compare layout
+        return (
+          <div className="flex flex-col h-full">
+            <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.title || "Comparison"}</h2>
+            <div className="grid grid-cols-2 gap-6 flex-grow">
+              <div>
+                <h3 className="text-lg font-medium mb-2">{slidePlaceholders['compare-title-1'] || "Option 1"}</h3>
+                {slidePlaceholders['compare-content-1'] ? (
+                  <div dangerouslySetInnerHTML={{ 
+                    __html: slidePlaceholders['compare-content-1']
+                      .replace(/<bullet>/g, '<li>')
+                      .replace(/<\/bullet>/g, '</li>')
+                      .replace(/\n/g, '<br>') 
+                  }} className="list-disc pl-5" />
+                ) : (
+                  <p className="text-muted-foreground">Option 1 details</p>
+                )}
+              </div>
+              <div>
+                <h3 className="text-lg font-medium mb-2">{slidePlaceholders['compare-title-2'] || "Option 2"}</h3>
+                {slidePlaceholders['compare-content-2'] ? (
+                  <div dangerouslySetInnerHTML={{ 
+                    __html: slidePlaceholders['compare-content-2']
+                      .replace(/<bullet>/g, '<li>')
+                      .replace(/<\/bullet>/g, '</li>')
+                      .replace(/\n/g, '<br>') 
+                  }} className="list-disc pl-5" />
+                ) : (
+                  <p className="text-muted-foreground">Option 2 details</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case 8: // Image with content
+        return (
+          <div className="flex flex-col h-full">
+            <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.title || "Slide Title"}</h2>
+            <div className="grid grid-cols-2 gap-6 flex-grow">
+              <div className="bg-muted/20 rounded-lg flex items-center justify-center p-4">
+                <div className="text-sm text-muted-foreground">[Image: {slidePlaceholders.image || "image.jpg"}]</div>
+              </div>
+              <div>
+                {slidePlaceholders.content ? (
+                  <div dangerouslySetInnerHTML={{ 
+                    __html: slidePlaceholders.content
+                      .replace(/<bullet>/g, '<li>')
+                      .replace(/<\/bullet>/g, '</li>')
+                      .replace(/\n/g, '<br>') 
+                  }} className="list-disc pl-5" />
+                ) : (
+                  <p className="text-muted-foreground">Content goes here</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case 4: // Title only
+      case 5: // Image only
+      default:
+        return (
+          <div className="flex flex-col h-full">
+            <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.title || "Slide Title"}</h2>
+            {slideLayout === 5 && (
+              <div className="flex-grow flex items-center justify-center">
+                <div className="bg-muted/20 rounded-lg flex items-center justify-center p-4 w-3/4 h-3/4">
+                  <div className="text-sm text-muted-foreground">[Image: {slidePlaceholders.image || "image.jpg"}]</div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -191,10 +451,8 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
               
               <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
                 {presentationData.slides.map((slide: any, index: number) => {
-                  // Get title based on slide type
-                  const slideTitle = slide.placeholders.CENTER_TITLE || 
-                                  slide.placeholders.TITLE || 
-                                  `Slide ${index + 1}`;
+                  // Get title for slide
+                  const slideTitle = getSlideTitle(slide);
                   
                   return (
                     <div 
@@ -213,8 +471,14 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                           <p className="truncate text-sm font-medium">{slideTitle}</p>
                           <p className="text-xs text-muted-foreground">
                             {slide.layout === 0 ? 'Title Slide' : 
-                             slide.layout === 1 ? 'Content with Image' : 
-                             slide.layout === 2 ? 'Content' : 'Text Only'}
+                             slide.layout === 1 ? 'Content' : 
+                             slide.layout === 2 ? 'Content with Image' : 
+                             slide.layout === 3 ? 'Text Only' :
+                             slide.layout === 4 ? 'Title Only' :
+                             slide.layout === 5 ? 'Image Only' :
+                             slide.layout === 6 ? 'Two Column' :
+                             slide.layout === 7 ? 'Comparison' :
+                             slide.layout === 8 ? 'Image with Content' : 'Slide'}
                           </p>
                         </div>
                       </div>
@@ -229,9 +493,18 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                 variant="outline" 
                 className="w-full flex items-center gap-2" 
                 onClick={handleDownload}
-                disabled={!exportUrl}
+                disabled={!presentationId || isDownloading}
               >
-                <Download size={16} /> Download Presentation
+                {isDownloading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> 
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} /> Download Presentation
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -299,118 +572,27 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   )}
                 </div>
               </div>
+
+              {saveSuccess && (
+                <Alert className="mb-4 bg-green-500/10 border-green-500/30">
+                  <AlertDescription className="text-green-500">
+                    Slide changes saved successfully!
+                  </AlertDescription>
+                </Alert>
+              )}
               
               <div className="aspect-[16/9] border border-border rounded-lg overflow-hidden">
                 {editMode ? (
                   // Edit Mode
                   <div className="h-full bg-black/80 p-6 overflow-y-auto">
-                    {slideLayout === 0 && (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium mb-1 block">Title</label>
-                          <Input
-                            value={slidePlaceholders.CENTER_TITLE || ''}
-                            onChange={(e) => updateEditedPlaceholder('CENTER_TITLE', e.target.value)}
-                            className="bg-black/60 border-border"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium mb-1 block">Subtitle</label>
-                          <Input
-                            value={slidePlaceholders.SUBTITLE || ''}
-                            onChange={(e) => updateEditedPlaceholder('SUBTITLE', e.target.value)}
-                            className="bg-black/60 border-border"
-                          />
-                        </div>
-                      </div>
-                    )}
-                    
-                    {(slideLayout === 1 || slideLayout === 2 || slideLayout === 3) && (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium mb-1 block">Title</label>
-                          <Input
-                            value={slidePlaceholders.TITLE || ''}
-                            onChange={(e) => updateEditedPlaceholder('TITLE', e.target.value)}
-                            className="bg-black/60 border-border"
-                          />
-                        </div>
-                        
-                        {slideLayout === 1 && (
-                          <div>
-                            <label className="text-sm font-medium mb-1 block">Image Path</label>
-                            <Input
-                              value={slidePlaceholders.PICTURE || ''}
-                              onChange={(e) => updateEditedPlaceholder('PICTURE', e.target.value)}
-                              className="bg-black/60 border-border"
-                              placeholder="e.g., image.jpg"
-                            />
-                          </div>
-                        )}
-                        
-                        <div>
-                          <label className="text-sm font-medium mb-1 block">Content</label>
-                          <Textarea
-                            value={slidePlaceholders.BODY || ''}
-                            onChange={(e) => updateEditedPlaceholder('BODY', e.target.value)}
-                            className="bg-black/60 border-border min-h-[200px]"
-                            placeholder="Use <bullet>Item</bullet> syntax for bullet points"
-                          />
-                        </div>
-                      </div>
-                    )}
+                    <div className="space-y-4">
+                      {getPlaceholderInputs()}
+                    </div>
                   </div>
                 ) : (
                   // View Mode
                   <div className="h-full bg-black/80 p-6">
-                    {/* Title slide layout */}
-                    {slideLayout === 0 && (
-                      <div className="flex flex-col items-center justify-center h-full text-center">
-                        <h1 className="text-3xl font-bold mb-4">{slidePlaceholders.CENTER_TITLE || "Title Slide"}</h1>
-                        <p className="text-xl text-muted-foreground">{slidePlaceholders.SUBTITLE || "Subtitle"}</p>
-                      </div>
-                    )}
-
-                    {/* Content slide with image layout */}
-                    {slideLayout === 1 && (
-                      <div className="flex flex-col h-full">
-                        <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.TITLE || "Slide Title"}</h2>
-                        <div className="grid grid-cols-2 gap-6 flex-grow">
-                          <div className="bg-muted/20 rounded-lg flex items-center justify-center p-4">
-                            <div className="text-sm text-muted-foreground">[Image: {slidePlaceholders.PICTURE || "image.jpg"}]</div>
-                          </div>
-                          <div>
-                            {slidePlaceholders.BODY ? (
-                              <div dangerouslySetInnerHTML={{ 
-                                __html: slidePlaceholders.BODY
-                                  .replace(/<bullet>/g, '<li>')
-                                  .replace(/<\/bullet>/g, '</li>')
-                                  .replace(/\n/g, '<br>') 
-                              }} className="list-disc pl-5" />
-                            ) : (
-                              <p className="text-muted-foreground">Content goes here</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Content slide without image layout */}
-                    {(slideLayout === 2 || slideLayout === 3) && (
-                      <div className="flex flex-col h-full">
-                        <h2 className="text-2xl font-bold mb-6">{slidePlaceholders.TITLE || "Slide Title"}</h2>
-                        {slidePlaceholders.BODY ? (
-                          <div dangerouslySetInnerHTML={{ 
-                            __html: slidePlaceholders.BODY
-                              .replace(/<bullet>/g, '<li>')
-                              .replace(/<\/bullet>/g, '</li>')
-                              .replace(/\n/g, '<br>') 
-                          }} className="list-disc pl-5" />
-                        ) : (
-                          <p className="text-muted-foreground">Content goes here</p>
-                        )}
-                      </div>
-                    )}
+                    {renderSlideContent()}
                   </div>
                 )}
               </div>
@@ -453,9 +635,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                       >
                         <div className="w-full h-full p-1 flex flex-col justify-center items-center text-[8px] text-center">
                           <div className="truncate w-full">
-                            {index + 1}: {slide.placeholders.CENTER_TITLE || 
-                            slide.placeholders.TITLE || 
-                            `Slide ${index + 1}`}
+                            {index + 1}: {getSlideTitle(slide)}
                           </div>
                         </div>
                       </div>

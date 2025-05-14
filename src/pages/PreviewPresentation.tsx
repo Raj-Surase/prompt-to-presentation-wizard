@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { usePresentationContext } from '@/context/PresentationContext';
 import PresentationViewer from '@/components/PresentationViewer';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Check } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getPresentationDetails } from '@/lib/presentationService';
 
 const PreviewPresentation = () => {
   const { topics, setTopics, handleExport } = usePresentationContext();
@@ -15,6 +17,9 @@ const PreviewPresentation = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('Loading your presentation...');
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [presentationMeta, setPresentationMeta] = useState<any>(null);
 
   useEffect(() => {
     // Check if we have a presentation ID from the location state
@@ -28,14 +33,21 @@ const PreviewPresentation = () => {
     try {
       setIsLoading(true);
       setLoadingMessage('Loading presentation data...');
-      const response = await fetch(`/api/presentations/${id}`);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch presentation data');
-      }
+      // Use the service function with auth token
+      const data = await getPresentationDetails(id);
       
-      const data = await response.json();
+      // Store presentation metadata
+      setPresentationMeta({
+        id: data.id,
+        prompt: data.prompt,
+        language: data.language,
+        number_of_slides: data.number_of_slides,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        ppt_filename: data.ppt_filename,
+        status: data.status
+      });
       
       // If the presentation is still generating, poll for updates
       if (data.status === 'pending') {
@@ -62,6 +74,15 @@ const PreviewPresentation = () => {
           setPresentationData(responseData);
           setTopics(responseData);
           setIsLoading(false);
+          
+          // Show success alert when presentation is ready
+          setSuccessMessage('Your presentation is ready!');
+          setShowSuccessAlert(true);
+          
+          // Auto-hide the alert after 5 seconds
+          setTimeout(() => {
+            setShowSuccessAlert(false);
+          }, 5000);
         } else {
           throw new Error('No presentation data found');
         }
@@ -145,11 +166,49 @@ const PreviewPresentation = () => {
           <div className="w-[120px]"></div> {/* Spacer for centering the title */}
         </div>
         
+        {presentationMeta && (
+          <div className="mb-4">
+            <Card className="bg-black/60 border-border p-4">
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div className="flex-1">
+                  <p className="text-muted-foreground">Topic</p>
+                  <p className="font-medium">{presentationMeta.prompt}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Slides</p>
+                  <p className="font-medium">{presentationMeta.number_of_slides}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Language</p>
+                  <p className="font-medium">{presentationMeta.language}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <p className="font-medium capitalize">{presentationMeta.status}</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+        
         <PresentationViewer 
           topics={presentationData} 
           onExport={handleExport} 
           presentationId={presentationId}
         />
+        
+        {/* Success notification */}
+        {showSuccessAlert && (
+          <div className="fixed bottom-4 right-4 max-w-md z-50">
+            <Alert className="bg-green-500/10 border-green-500/30">
+              <Check className="h-4 w-4 text-green-500" />
+              <AlertTitle>Success</AlertTitle>
+              <AlertDescription>
+                {successMessage}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -3,6 +3,11 @@ import { usePresentationContext } from '@/context/PresentationContext';
 import PresentationTopicEditor from '@/components/PresentationTopicEditor';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
+import { 
+  getPresentationDetails, 
+  getPresentationStructure, 
+  updateSlideOrder 
+} from '@/lib/presentationService';
 
 interface SlideTitle {
   index: number;
@@ -29,14 +34,8 @@ const EditTopics = () => {
   const fetchPresentationStatus = async (id: number) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/presentations/${id}`);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch presentation data');
-      }
-      
-      const data = await response.json();
+      const data = await getPresentationDetails(id);
       
       // If the presentation is still generating, poll for updates
       if (data.status === 'pending') {
@@ -54,19 +53,8 @@ const EditTopics = () => {
       } else if (data.status === 'failed') {
         throw new Error(data.error_message || 'Presentation generation failed');
       } else if (data.status === 'completed') {
-        // Once completed, set the presentation data and stop polling
-        if (data.current_response) {
-          const responseData = typeof data.current_response === 'string' 
-            ? JSON.parse(data.current_response) 
-            : data.current_response;
-          
-          // Extract slide titles from the response
-          extractSlideTitles(responseData);
-          
-          // Store the full response data
-          setTopics(responseData);
-          setIsLoading(false);
-        }
+        // Once completed, fetch the structure data
+        await fetchPresentationStructure(id);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -75,35 +63,47 @@ const EditTopics = () => {
     }
   };
 
-  // Extract titles from the slides array in the API response
-  const extractSlideTitles = (responseData: any) => {
-    if (!responseData || !responseData.slides || !Array.isArray(responseData.slides)) {
-      console.error('Invalid response data format', responseData);
-      return;
+  // Fetch the structure endpoint for slide titles
+  const fetchPresentationStructure = async (id: number) => {
+    try {
+      setLoadingMessage('Loading presentation structure...');
+      
+      // Use the service function to get structure with auth token
+      const structure = await getPresentationStructure(id);
+      
+      // Set slide titles from the structure
+      setSlideTitles(structure);
+      
+      // Also fetch the full presentation data to store it in context
+      await fetchFullPresentationData(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load presentation structure');
+      console.error('Error fetching presentation structure:', err);
+      setIsLoading(false);
     }
-
-    const titles = responseData.slides.map((slide: any, index: number) => {
-      // Get the title based on layout type
-      let title = 'Untitled Slide';
-      
-      if (slide.placeholders) {
-        if (slide.layout === 0 && slide.placeholders.CENTER_TITLE) {
-          title = slide.placeholders.CENTER_TITLE;
-        } else if (slide.placeholders.TITLE) {
-          title = slide.placeholders.TITLE;
-        }
-      }
-      
-      return {
-        index,
-        title
-      };
-    });
-
-    setSlideTitles(titles);
   };
 
-  const handleProceed = (updatedTopics: any) => {
+  // Fetch the full presentation data for context
+  const fetchFullPresentationData = async (id: number) => {
+    try {
+      const data = await getPresentationDetails(id);
+      
+      if (data.current_response) {
+        const responseData = typeof data.current_response === 'string' 
+          ? JSON.parse(data.current_response) 
+          : data.current_response;
+        
+        // Store the full response data in context
+        setTopics(responseData);
+        setIsLoading(false);
+      }
+    } catch (err) {
+      console.error('Error fetching full presentation data:', err);
+      // Don't set error here as we've already got the structure data
+    }
+  };
+
+  const handleProceed = (updatedTopics: SlideTitle[]) => {
     if (!presentationId) return;
     
     try {
@@ -111,37 +111,22 @@ const EditTopics = () => {
       const newOrder = updatedTopics.map((topic: SlideTitle) => topic.index);
       
       // Call the API to update the slide order
-      updateSlideOrder(presentationId, newOrder);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-    }
-  };
-  
-  const updateSlideOrder = async (id: number, newOrder: number[]) => {
-    try {
+      updateSlideOrder(presentationId, newOrder)
+        .then(() => {
+          // Navigate to preview with presentation ID
+          navigate('/preview', { state: { presentationId } });
+        })
+        .catch(err => {
+          setError(err instanceof Error ? err.message : 'Failed to update presentation structure');
+          setIsLoading(false);
+        });
+      
+      // Show loading state while updating
       setIsLoading(true);
       setLoadingMessage('Updating presentation structure...');
       
-      const response = await fetch(`/api/presentations/${id}/structure`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          order: newOrder
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update presentation structure');
-      }
-      
-      const data = await response.json();
-      navigate('/preview', { state: { presentationId } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update presentation structure');
-      setIsLoading(false);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     }
   };
 
