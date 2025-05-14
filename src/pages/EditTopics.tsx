@@ -115,48 +115,18 @@ const EditTopics = () => {
     }
   };
 
-  const handleProceed = (updatedTopics: SlideTitle[]) => {
+  const handleProceed = async (updatedTopics: SlideTitle[]) => {
     if (!presentationId) return;
-    
     try {
       // Create the updated order payload based on the order of slideTitles
       const newOrder = updatedTopics.map((topic: SlideTitle) => topic.index);
-      
-      // Call the API to update the slide order
-      updateSlideOrder(presentationId, newOrder)
-        .then(() => {
-          // Navigate to preview with presentation ID
-          navigate('/preview', { state: { presentationId } });
-        })
-        .catch(err => {
-          setError(err instanceof Error ? err.message : 'Failed to update presentation structure');
-          setIsLoading(false);
-        });
-      
-      // Show loading state while updating
       setIsLoading(true);
       setLoadingMessage('Updating presentation structure...');
-      
-      const response = await fetch(`/api/presentations/${id}/structure`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
-        },
-        body: JSON.stringify({
-          order: newOrder
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update presentation structure');
-      }
-      
-      const data = await response.json();
+      await updateSlideOrder(presentationId, newOrder);
       navigate('/preview', { state: { presentationId } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      setError(err instanceof Error ? err.message : 'Failed to update presentation structure');
+      setIsLoading(false);
     }
   };
 

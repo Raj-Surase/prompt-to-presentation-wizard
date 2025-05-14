@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PresentationViewerProps {
   topics: any;
@@ -28,13 +30,14 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
   const [editMode, setEditMode] = useState(false);
   const [editedSlide, setEditedSlide] = useState<any>(null);
   const { session } = useAuth();
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     if (topics) {
       setPresentationData(topics);
       
       if (presentationId) {
-        setExportUrl(getDownloadUrl(presentationId));
+        setExportUrl(`/api/download/${presentationId}`);
       }
     }
   }, [topics, presentationId]);
@@ -189,6 +192,16 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
     }
     
     return placeholders.title || 'Untitled Slide';
+  };
+
+  const downloadPresentation = async (id: number) => {
+    const response = await fetch(`/api/download/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${session?.access_token}`
+      }
+    });
+    if (!response.ok) throw new Error('Failed to download');
+    return await response.blob();
   };
 
   // Loading state
