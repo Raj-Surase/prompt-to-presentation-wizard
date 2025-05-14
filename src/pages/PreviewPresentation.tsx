@@ -15,6 +15,7 @@ const PreviewPresentation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [presentationId, setPresentationId] = useState<number | null>(null);
+  const fromIndex = location.state?.fromIndex;
   const [presentationData, setPresentationData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -153,17 +154,7 @@ const PreviewPresentation = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-7xl">
-        <div className="mb-4 flex justify-between items-center">
-          <Button 
-            variant="outline" 
-            onClick={handleBackToEdit}
-            className="flex items-center"
-          >
-            <ArrowLeft size={16} className="mr-2" /> Back to Edit
-          </Button>
-          <h1 className="text-2xl md:text-3xl font-bold gradient-text">Presentation Preview</h1>
-          <div className="w-[120px]"></div> {/* Spacer for centering the title */}
-        </div>
+        
         
         {presentationMeta && (
           <div className="mb-4">

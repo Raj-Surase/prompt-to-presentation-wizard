@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, ArrowLeft, Download, Edit, Loader2, Save, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowRight, ArrowLeft, Download, Edit, Loader2, Save, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { usePresentationContext } from '@/context/PresentationContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +31,9 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
   const [editedSlide, setEditedSlide] = useState<any>(null);
   const { session } = useAuth();
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [structureEditMode, setStructureEditMode] = useState(false);
+  const [structureOrder, setStructureOrder] = useState<any[]>([]);
+  const [structureLoading, setStructureLoading] = useState(false);
 
   useEffect(() => {
     if (topics) {
@@ -51,6 +54,36 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
       return () => clearTimeout(timer);
     }
   }, [saveSuccess]);
+
+  // Initialize structureOrder from presentationData on load
+  useEffect(() => {
+    if (presentationData && presentationData.slides) {
+      // Map slides to structure format: { index, title }
+      const structure = presentationData.slides.map((slide: any, idx: number) => ({
+        index: idx,
+        title: slide.layout === 0 ? (slide.placeholders["presentation-topic"] || slide.placeholders["topic-title"] || "Title Slide") : (slide.placeholders.title || "Untitled Slide")
+      }));
+      setStructureOrder(structure);
+    }
+  }, [presentationData]);
+
+  // Optionally, still fetch from API when edit mode is enabled
+  useEffect(() => {
+    if (structureEditMode && presentationId) {
+      setStructureLoading(true);
+      fetch(`/api/presentations/${presentationId}/structure`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          setStructureOrder(data.structure || []);
+          setStructureLoading(false);
+        })
+        .catch(() => setStructureLoading(false));
+    }
+  }, [structureEditMode, presentationId, session]);
 
   const handleDownload = async () => {
     if (!presentationId) return;
@@ -202,6 +235,38 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
     });
     if (!response.ok) throw new Error('Failed to download');
     return await response.blob();
+  };
+
+  const moveSlide = (from: number, to: number) => {
+    if (to < 0 || to >= structureOrder.length) return;
+    const newOrder = [...structureOrder];
+    const [moved] = newOrder.splice(from, 1);
+    newOrder.splice(to, 0, moved);
+    setStructureOrder(newOrder);
+  };
+
+  const saveStructureOrder = async () => {
+    if (!presentationId) return;
+    setStructureLoading(true);
+    try {
+      const order = structureOrder.map(slide => slide.index);
+      const response = await fetch(`/api/presentations/${presentationId}/structure`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ order })
+      });
+      if (!response.ok) throw new Error('Failed to update structure');
+      setStructureEditMode(false);
+      // Optionally reload presentation data here
+      window.location.reload(); // or trigger a refetch if you want to be more elegant
+    } catch (err) {
+      setError('Failed to update structure');
+    } finally {
+      setStructureLoading(false);
+    }
   };
 
   // Loading state
@@ -464,67 +529,45 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Left panel - Slide structure */}
         <div className="md:col-span-1">
-          <Card className="bg-black/60 border-border h-full">
+          <Card className="bg-white border-gray-300 h-full shadow-sm">
             <CardContent className="p-4">
-              <h3 className="text-lg font-semibold mb-3">Presentation Structure</h3>
-              
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-black">Presentation Structure</h3>
+                <button type="button" onClick={() => setStructureEditMode(e => !e)} className="ml-2 p-1 hover:bg-gray-200 rounded" title="Edit Structure">
+                  <Pencil size={18} />
+                </button>
+              </div>
+              {structureEditMode ? (
+                <div>
+                  {structureLoading ? (
+                    <div className="flex justify-center py-4"><Loader2 className="animate-spin" /></div>
+                  ) : (
               <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-                {presentationData.slides.map((slide: any, index: number) => {
-                  // Get title for slide
-                  const slideTitle = getSlideTitle(slide);
-                  
-                  return (
-                    <div 
-                      key={index}
-                      className={`
-                        p-2 rounded cursor-pointer transition-all
-                        ${currentSlideIndex === index ? 'bg-accent/20 border-l-2 border-accent' : 'bg-black/40 hover:bg-black/30'}
-                      `}
-                      onClick={() => goToSlide(index)}
-                    >
-                      <div className="flex items-center">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium mr-2">
-                          {index + 1}
+                      {structureOrder.map((slide, idx) => (
+                        <div key={slide.index} className="flex items-center p-2 bg-gray-100 rounded mb-1">
+                          <span className="w-6 h-6 rounded-full bg-black/10 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
+                          <span className="flex-1 truncate text-sm font-medium text-black">{slide.title}</span>
+                          <button onClick={() => moveSlide(idx, idx - 1)} disabled={idx === 0} className="p-1"><ChevronUp size={16} /></button>
+                          <button onClick={() => moveSlide(idx, idx + 1)} disabled={idx === structureOrder.length - 1} className="p-1"><ChevronDown size={16} /></button>
                         </div>
-                        <div className="overflow-hidden">
-                          <p className="truncate text-sm font-medium">{slideTitle}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {slide.layout === 0 ? 'Title Slide' : 
-                             slide.layout === 1 ? 'Content' : 
-                             slide.layout === 2 ? 'Content with Image' : 
-                             slide.layout === 3 ? 'Text Only' :
-                             slide.layout === 4 ? 'Title Only' :
-                             slide.layout === 5 ? 'Image Only' :
-                             slide.layout === 6 ? 'Two Column' :
-                             slide.layout === 7 ? 'Comparison' :
-                             slide.layout === 8 ? 'Image with Content' : 'Slide'}
-                          </p>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 mt-4">
+                    <Button onClick={saveStructureOrder} disabled={structureLoading} className="bg-black text-white">Save</Button>
+                    <Button variant="outline" onClick={() => setStructureEditMode(false)} disabled={structureLoading}>Cancel</Button>
                         </div>
                       </div>
+              ) : (
+                <div className="space-y-2 max-h-[650px] overflow-y-auto pr-2">
+                  {structureOrder.map((slide, idx) => (
+                    <div key={slide.index} className="flex items-center p-2 bg-gray-100 rounded mb-1">
+                      <span className="w-6 h-6 rounded-full bg-black/10 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
+                      <span className="flex-1 truncate text-sm font-medium text-black">{slide.title}</span>
                     </div>
-                  );
-                })}
+                  ))}
               </div>
-              
-              <Separator className="my-4" />
-              
-              <Button 
-                variant="outline" 
-                className="w-full flex items-center gap-2" 
-                onClick={handleDownload}
-                disabled={!presentationId || isDownloading}
-              >
-                {isDownloading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" /> 
-                    Downloading...
-                  </>
-                ) : (
-                  <>
-                    <Download size={16} /> Download Presentation
-                  </>
-                )}
-              </Button>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -591,7 +634,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   )}
                 </div>
               </div>
-
+              
               {saveSuccess && (
                 <Alert className="mb-4 bg-green-500/10 border-green-500/30">
                   <AlertDescription className="text-green-500">
@@ -604,9 +647,9 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                 {editMode ? (
                   // Edit Mode
                   <div className="h-full bg-black/80 p-6 overflow-y-auto">
-                    <div className="space-y-4">
+                      <div className="space-y-4">
                       {getPlaceholderInputs()}
-                    </div>
+                      </div>
                   </div>
                 ) : (
                   // View Mode
@@ -619,13 +662,13 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
           </Card>
           
           {/* JSON Data Viewer */}
-          <Tabs defaultValue="preview" className="w-full mt-4">
-            <TabsList>
+          {/* <Tabs defaultValue="preview" className="w-full mt-4"> */}
+            {/* <TabsList>
               <TabsTrigger value="preview">Preview</TabsTrigger>
               <TabsTrigger value="json">JSON Structure</TabsTrigger>
-            </TabsList>
+            </TabsList> */}
             
-            <TabsContent value="json" className="mt-2">
+            {/* <TabsContent value="json" className="mt-2">
               <Card className="bg-black/60 border-border">
                 <CardContent className="p-4">
                   <h3 className="text-sm font-medium mb-2">Current Slide JSON</h3>
@@ -636,24 +679,25 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
+            </TabsContent> */}
             
-            <TabsContent value="preview" className="mt-2">
-              <Card className="bg-black/60 border-border">
+            {/* <TabsContent value="preview" className="mt-2"> */}
+            <div style={{ height: '18px' }}></div>
+              <Card className="bg-black/60 border-border" >
                 <CardContent className="p-4">
                   <h3 className="text-sm font-medium mb-2">Slide Navigation</h3>
                   <div className="flex overflow-x-auto gap-2 pb-2">
                     {presentationData.slides.map((slide: any, index: number) => (
-                      <div 
-                        key={index}
-                        className={`
-                          cursor-pointer flex-shrink-0 w-16 h-12 border rounded overflow-hidden
+                        <div 
+                          key={index}
+                          className={`
+                            cursor-pointer flex-shrink-0 w-16 h-12 border rounded overflow-hidden
                           ${currentSlideIndex === index ? 'border-accent' : 'border-border'}
-                        `}
-                        onClick={() => goToSlide(index)}
-                      >
+                          `}
+                          onClick={() => goToSlide(index)}
+                        >
                         <div className="w-full h-full p-1 flex flex-col justify-center items-center text-[8px] text-center">
-                          <div className="truncate w-full">
+                            <div className="truncate w-full">
                             {index + 1}: {getSlideTitle(slide)}
                           </div>
                         </div>
@@ -662,8 +706,8 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
+            {/* </TabsContent> */}
+          {/* </Tabs> */}
         </div>
       </div>
     </div>

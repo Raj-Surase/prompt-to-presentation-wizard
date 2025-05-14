@@ -91,7 +91,7 @@ const Index = () => {
                 <div 
                   key={presentation.id} 
                   className="glass-panel p-4 hover:shadow-md transition-all cursor-pointer"
-                  onClick={() => navigate('/preview', { state: { presentationId: presentation.id } })}
+                  onClick={() => navigate('/preview', { state: { presentationId: presentation.id, fromIndex: true } })}
                 >
                   <div className="flex justify-between items-start">
                     <h3 className="font-semibold truncate flex-1">{presentation.prompt}</h3>
@@ -145,7 +145,7 @@ const Index = () => {
               <div 
                 key={project.id} 
                 className="glass-panel p-4 hover:shadow-md transition-all cursor-pointer"
-                onClick={() => navigate('/preview', { state: { presentationId: project.id } })}
+                onClick={() => navigate('/preview', { state: { presentationId: project.id, fromIndex: true } })}
               >
                 <h3 className="font-semibold truncate">{project.title}</h3>
                 <div className="flex justify-between text-sm text-gray-600 mt-2">
