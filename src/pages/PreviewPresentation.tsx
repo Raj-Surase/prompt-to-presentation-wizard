@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePresentationContext } from '@/context/PresentationContext';
+import { useAuth } from '@/context/AuthContext';
 import PresentationViewer from '@/components/PresentationViewer';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, ArrowLeft, Check } from 'lucide-react';
@@ -10,6 +11,7 @@ import { getPresentationDetails } from '@/lib/presentationService';
 
 const PreviewPresentation = () => {
   const { topics, setTopics, handleExport } = usePresentationContext();
+  const { session } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [presentationId, setPresentationId] = useState<number | null>(null);
@@ -33,21 +35,18 @@ const PreviewPresentation = () => {
     try {
       setIsLoading(true);
       setLoadingMessage('Loading presentation data...');
-      
-      // Use the service function with auth token
-      const data = await getPresentationDetails(id);
-      
-      // Store presentation metadata
-      setPresentationMeta({
-        id: data.id,
-        prompt: data.prompt,
-        language: data.language,
-        number_of_slides: data.number_of_slides,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        ppt_filename: data.ppt_filename,
-        status: data.status
+      const response = await fetch(`/api/presentations/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch presentation data');
+      }
+      
+      const data = await response.json();
       
       // If the presentation is still generating, poll for updates
       if (data.status === 'pending') {

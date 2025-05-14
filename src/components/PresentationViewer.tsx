@@ -7,10 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import api from '@/lib/api';
-import { updateSlideContent, getDownloadUrl, downloadPresentation } from '@/lib/presentationService';
-import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 interface PresentationViewerProps {
   topics: any;
@@ -30,7 +27,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
   const [loadingMessage, setLoadingMessage] = useState('Loading your presentation...');
   const [editMode, setEditMode] = useState(false);
   const [editedSlide, setEditedSlide] = useState<any>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { session } = useAuth();
 
   useEffect(() => {
     if (topics) {
@@ -113,13 +110,22 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
       // Update the current slide with edited content
       updatedPresentationData.slides[currentSlideIndex] = editedSlide;
       
-      // Call the API to update the slide using the service function 
-      // which handles authentication headers
-      await updateSlideContent(
-        presentationId,
-        currentSlideIndex,
-        editedSlide.placeholders
-      );
+      // Call the API to update the slide
+      const response = await fetch(`/api/presentations/${presentationId}/slides/${currentSlideIndex}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          placeholders: editedSlide.placeholders
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update slide');
+      }
       
       // Update the local state with the edited data
       setPresentationData(updatedPresentationData);
