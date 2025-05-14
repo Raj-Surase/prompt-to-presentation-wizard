@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from '@/context/AuthContext';
 
 interface PresentationViewerProps {
   topics: any;
@@ -24,6 +25,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
   const [loadingMessage, setLoadingMessage] = useState('Loading your presentation...');
   const [editMode, setEditMode] = useState(false);
   const [editedSlide, setEditedSlide] = useState<any>(null);
+  const { session } = useAuth();
 
   useEffect(() => {
     if (topics) {
@@ -68,6 +70,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
         },
         body: JSON.stringify({
           placeholders: editedSlide.placeholders

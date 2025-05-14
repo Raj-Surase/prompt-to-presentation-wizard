@@ -1,6 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { usePresentationContext } from '@/context/PresentationContext';
+import { useAuth } from '@/context/AuthContext';
 import PresentationTopicEditor from '@/components/PresentationTopicEditor';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -12,6 +12,7 @@ interface SlideTitle {
 
 const EditTopics = () => {
   const { topics, setTopics, isLoading, setIsLoading } = usePresentationContext();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [presentationId, setPresentationId] = useState<number | null>(null);
@@ -30,7 +31,11 @@ const EditTopics = () => {
   const fetchPresentationStatus = async (id: number) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/presentations/${id}`);
+      const response = await fetch(`/api/presentations/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -127,6 +132,7 @@ const EditTopics = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
         },
         body: JSON.stringify({
           order: newOrder

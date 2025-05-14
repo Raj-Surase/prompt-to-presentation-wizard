@@ -111,8 +111,8 @@ const PresentationTopicEditor: React.FC<PresentationTopicEditorProps> = ({
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <div className="bg-black/60 border border-border rounded-xl p-5 mb-5">
-        <h2 className="text-xl font-bold mb-3">Edit Presentation Structure</h2>
+      <div className="bg-black border border-border rounded-xl p-5 mb-5">
+        <h2 className="bg-accent text-xl font-bold mb-3">Edit Presentation Structure</h2>
         <p className="text-muted-foreground mb-4">
           Reorder slides, edit titles, or remove unwanted slides before generating your presentation.
         </p>

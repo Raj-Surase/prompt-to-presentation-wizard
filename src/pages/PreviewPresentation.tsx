@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePresentationContext } from '@/context/PresentationContext';
+import { useAuth } from '@/context/AuthContext';
 import PresentationViewer from '@/components/PresentationViewer';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, ArrowLeft } from 'lucide-react';
@@ -8,6 +9,7 @@ import { Card } from "@/components/ui/card";
 
 const PreviewPresentation = () => {
   const { topics, setTopics, handleExport } = usePresentationContext();
+  const { session } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [presentationId, setPresentationId] = useState<number | null>(null);
@@ -28,7 +30,11 @@ const PreviewPresentation = () => {
     try {
       setIsLoading(true);
       setLoadingMessage('Loading presentation data...');
-      const response = await fetch(`/api/presentations/${id}`);
+      const response = await fetch(`/api/presentations/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
