@@ -1,66 +1,106 @@
-import React from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { FileSpreadsheet, FilePdf, ArrowLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Download, ArrowLeft, FileText, FileSpreadsheet } from "lucide-react";
+import { useAuth } from '@/context/AuthContext';
+import { getDownloadUrl, getExportUrl } from '@/lib/presentationService';
+import { Spinner } from "@/components/ui/spinner";
+import { useToast } from "@/components/ui/use-toast";
 
 const ExportPresentation = () => {
-  const { session } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
-
-  const handleDownload = async (format: string) => {
-    if (!session?.access_token) {
-      console.error("No access token available");
-      return;
+  const { session } = useAuth();
+  const { toast } = useToast();
+  const [presentationId, setPresentationId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (location.state?.presentationId) {
+      setPresentationId(location.state.presentationId);
+      // In a real app, you would fetch the thumbnail URL here
+      setThumbnailUrl('/placeholder.svg');
+    } else {
+      navigate('/');
     }
-
-    try {
-      const response = await fetch(`/api/export/1/${format}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
+  }, [location.state, navigate]);
+  
+  const handleExport = (format: 'pptx' | 'pdf') => {
+    if (!presentationId) return;
+    
+    setIsLoading(true);
+    
+    // In a real implementation, this would handle the actual download
+    setTimeout(() => {
+      window.open(getExportUrl(presentationId, format), '_blank');
+      toast({
+        title: `Export as ${format.toUpperCase()} started`,
+        description: "Your file will download shortly.",
       });
-
-      if (!response.ok) {
-        console.error(`Failed to download ${format}:`, response.status, response.statusText);
-        return;
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `presentation.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-    } catch (error) {
-      console.error(`Error downloading ${format}:`, error);
-    }
+      setIsLoading(false);
+    }, 1000);
   };
-
+  
+  const handleBack = () => {
+    navigate('/preview', { state: { presentationId } });
+  };
+  
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-black/60 border border-border p-6">
-        <h2 className="text-2xl font-bold text-center mb-4">Export Presentation</h2>
-        <div className="space-y-4">
-          <Button variant="outline" className="w-full justify-start gap-2 border-white/20 hover:bg-secondary/30" onClick={() => handleDownload('pptx')}>
-            <FileSpreadsheet size={16} />
-            Export as PPTX
-          </Button>
-          <Button variant="outline" className="w-full justify-start gap-2 border-white/20 hover:bg-secondary/30" onClick={() => handleDownload('pdf')}>
-            <FileText size={16} />
-            Export as PDF
-          </Button>
-        </div>
-        <Button variant="ghost" className="mt-4 w-full justify-start" onClick={() => navigate(-1)}>
-          <ArrowLeft size={16} className="mr-2" />
-          Go Back
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-lg">
+        <Button 
+          variant="ghost" 
+          onClick={handleBack} 
+          className="mb-6"
+        >
+          <ArrowLeft size={16} className="mr-2" /> Back to Preview
         </Button>
-      </Card>
+        
+        <Card className="glass-panel border-2 border-white/10 p-6">
+          <h1 className="text-2xl font-bold mb-6 gradient-text">Export Presentation</h1>
+          
+          {thumbnailUrl && (
+            <div className="mb-6 flex justify-center">
+              <div className="rounded-xl overflow-hidden border-2 border-white/20 bg-black/40 w-full max-w-sm aspect-video flex items-center justify-center">
+                <img 
+                  src={thumbnailUrl} 
+                  alt="Presentation thumbnail" 
+                  className="w-full h-auto object-cover"
+                />
+              </div>
+            </div>
+          )}
+          
+          <div className="grid gap-4">
+            <Button 
+              onClick={() => handleExport('pptx')}
+              className="flex justify-between items-center bg-secondary hover:bg-secondary/80 h-16"
+              disabled={isLoading}
+            >
+              <div className="flex items-center">
+                <FileSpreadsheet className="mr-2" size={20} />
+                <span>PowerPoint (.pptx)</span>
+              </div>
+              {isLoading ? <Spinner size="sm" /> : null}
+            </Button>
+            
+            <Button 
+              onClick={() => handleExport('pdf')}
+              className="flex justify-between items-center bg-secondary hover:bg-secondary/80 h-16"
+              disabled={isLoading}
+            >
+              <div className="flex items-center">
+                <FilePdf className="mr-2" size={20} />
+                <span>PDF Document (.pdf)</span>
+              </div>
+              {isLoading ? <Spinner size="sm" /> : null}
+            </Button>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };
