@@ -8,7 +8,7 @@ import { formatStatus, getStatusColor, getDownloadUrl } from '@/lib/presentation
 import { format, parseISO } from 'date-fns';
 import { Spinner } from '@/components/ui/spinner';
 import { usePresentations } from '@/hooks/usePresentations';
-import { CreatePresentationForm } from '@/components/CreatePresentationForm';
+import CreatePresentationForm from '@/components/CreatePresentationForm';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
