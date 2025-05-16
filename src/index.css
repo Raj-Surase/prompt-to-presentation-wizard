@@ -7,44 +7,44 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 95%;
-    --secondary-foreground: 0 0% 10%;
-
-    --muted: 0 0% 95%;
-    --muted-foreground: 0 0% 40%;
-
-    --accent: 0 0% 0%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 0 0% 80%;
-    --input: 0 0% 95%;
-    --ring: 0 0% 20%;
-
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    
     --radius: 0.8rem;
-
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 0 0% 0%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 90%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 85%;
-    --sidebar-ring: 0 0% 20%;
+    
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 240 5.9% 10%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 240 4.9% 83.9%;
   }
 }
 
@@ -61,23 +61,30 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-white rounded-lg border border-gray-300 shadow-sm;
+    @apply bg-secondary/80 backdrop-blur-sm rounded-lg border border-white/10 shadow-lg;
   }
   
   .gradient-text {
-    @apply text-primary font-bold;
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-white/70;
   }
 
   .animate-enter {
     @apply animate-fade-in;
   }
   
-  .noise-bg {
-    background-color: #ffffff;
+  .rounded-input {
+    @apply p-2 rounded-xl border-gray-700 border text-lg font-medium text-white bg-secondary/80;
+  }
+
+  /* 3D hover effect for cards */
+  .hover-3d {
+    @apply transition-all duration-300;
+    transform-style: preserve-3d;
   }
   
-  .rounded-input {
-    @apply p-2 rounded-xl border-gray-400 border text-lg font-medium text-black bg-white;
+  .hover-3d:hover {
+    transform: translateY(-5px) rotateX(5deg);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.4);
   }
   
   /* Scrollbar styling */
@@ -92,6 +99,52 @@
   
   /* Custom styles for edit route */
   .edit-field {
-    @apply bg-white text-black border-gray-400 border;
+    @apply bg-secondary text-white border-gray-700 border;
+  }
+  
+  /* Animated loading */
+  .animate-loading {
+    @apply relative overflow-hidden;
+  }
+  
+  .animate-loading::after {
+    @apply absolute top-0 left-[-100%] w-[200%] h-full;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: loading-shine 1.5s infinite;
+    content: '';
+  }
+  
+  @keyframes loading-shine {
+    to {
+      transform: translateX(100%);
+    }
+  }
+  
+  /* Welcome animation */
+  .welcome-text {
+    @apply relative inline-block;
+    animation: welcome-bounce 1s ease-out;
+  }
+  
+  @keyframes welcome-bounce {
+    0% { transform: translateY(-50px); opacity: 0; }
+    50% { transform: translateY(10px); opacity: 0.7; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  
+  /* Project card styles */
+  .project-card {
+    @apply rounded-xl overflow-hidden bg-secondary/80 border border-white/10 transition-all;
+  }
+  
+  .project-card:hover {
+    @apply border-white/30 shadow-lg;
+    transform: translateY(-5px);
+  }
+  
+  .project-image {
+    @apply w-full h-36 object-cover mb-4 rounded-t-xl;
+    background-size: cover;
+    background-position: center;
   }
 }

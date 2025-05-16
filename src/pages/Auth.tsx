@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -31,7 +32,8 @@ const Auth = () => {
   // If already authenticated, redirect to the 'from' page or home
   useEffect(() => {
     if (user && !isLoading) {
-      navigate(from, { replace: true });
+      // Add welcome parameter when redirecting after successful auth
+      navigate(from + '?welcome=true', { replace: true });
     }
   }, [user, isLoading, navigate, from]);
   
@@ -112,11 +114,11 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen noise-bg flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
       
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="glass-panel w-full max-w-md p-8">
+        <div className="glass-panel w-full max-w-md p-8 animate-fade-in">
           <h1 className="text-2xl font-bold text-center mb-6">
             {isSignUp ? 'Create an Account' : 'Welcome Back'}
           </h1>
@@ -125,13 +127,13 @@ const Auth = () => {
           <div className="space-y-3 mb-6">
             <Button 
               variant="outline" 
-              className="w-full flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center gap-2 border-white/20 hover:bg-white/5"
               onClick={() => toast({
                 description: "GitHub integration not implemented yet."
               })}
               disabled={isLoading}
             >
-              <Github size={18} />
+              <Github size={18} className="animate-bounce-subtle" />
               <span>Continue with GitHub</span>
             </Button>
             <GoogleAuth />
@@ -139,10 +141,10 @@ const Auth = () => {
           
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+              <span className="px-2 bg-secondary/80 text-gray-400">Or continue with email</span>
             </div>
           </div>
           
@@ -157,6 +159,7 @@ const Auth = () => {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your full name"
                   disabled={isLoading}
+                  className="bg-secondary/50 border-white/10 focus:border-white/30"
                 />
               </div>
             )}
@@ -164,7 +167,7 @@ const Auth = () => {
             <div className="space-y-1">
               <Label htmlFor="email" className="flex justify-between">
                 <span>Email Address</span>
-                {formErrors.email && <span className="text-red-500 text-xs">{formErrors.email}</span>}
+                {formErrors.email && <span className="text-red-400 text-xs">{formErrors.email}</span>}
               </Label>
               <Input 
                 id="email" 
@@ -176,7 +179,7 @@ const Auth = () => {
                     setFormErrors(prev => ({ ...prev, email: undefined }));
                   }
                 }}
-                className={formErrors.email ? "border-red-500" : ""}
+                className={`bg-secondary/50 border-white/10 focus:border-white/30 ${formErrors.email ? "border-red-500" : ""}`}
                 placeholder="Enter your email"
                 disabled={isLoading}
                 required
@@ -186,7 +189,7 @@ const Auth = () => {
             <div className="space-y-1">
               <Label htmlFor="password" className="flex justify-between">
                 <span>Password</span>
-                {formErrors.password && <span className="text-red-500 text-xs">{formErrors.password}</span>}
+                {formErrors.password && <span className="text-red-400 text-xs">{formErrors.password}</span>}
               </Label>
               <Input 
                 id="password" 
@@ -198,7 +201,7 @@ const Auth = () => {
                     setFormErrors(prev => ({ ...prev, password: undefined }));
                   }
                 }}
-                className={formErrors.password ? "border-red-500" : ""}
+                className={`bg-secondary/50 border-white/10 focus:border-white/30 ${formErrors.password ? "border-red-500" : ""}`}
                 placeholder="Enter your password"
                 disabled={isLoading}
                 required
@@ -207,7 +210,7 @@ const Auth = () => {
             
             <Button 
               type="submit" 
-              className="w-full bg-accent hover:bg-accent/90"
+              className="w-full bg-white hover:bg-white/90 text-black"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -222,13 +225,13 @@ const Auth = () => {
           </form>
           
           <div className="text-center mt-6">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-400">
               {isSignUp 
                 ? 'Already have an account? ' 
                 : "Don't have an account? "}
               <button 
                 onClick={toggleMode} 
-                className="text-accent hover:underline"
+                className="text-white hover:underline"
                 disabled={isLoading}
               >
                 {isSignUp ? 'Log In' : 'Sign Up'}
