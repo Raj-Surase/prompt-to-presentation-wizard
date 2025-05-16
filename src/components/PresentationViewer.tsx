@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -596,13 +597,13 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Left panel - Slide structure */}
+        {/* Left panel - Slide structure - Update to dark theme */}
         <div className="md:col-span-1">
-          <Card className="bg-white border-gray-300 h-full shadow-sm">
+          <Card className="bg-black/60 border-border h-full shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold text-black">Presentation Structure</h3>
-                <button type="button" onClick={() => setStructureEditMode(e => !e)} className="ml-2 p-1 hover:bg-gray-200 rounded" title="Edit Structure">
+                <h3 className="text-lg font-semibold text-white">Presentation Structure</h3>
+                <button type="button" onClick={() => setStructureEditMode(e => !e)} className="ml-2 p-1 hover:bg-gray-800 rounded" title="Edit Structure">
                   <Pencil size={18} />
                 </button>
               </div>
@@ -611,11 +612,11 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   {structureLoading ? (
                     <div className="flex justify-center py-4"><Loader2 className="animate-spin" /></div>
                   ) : (
-              <div className="space-y-2 max-h-[550px] overflow-y-auto pr-2">
+                    <div className="space-y-2 max-h-[550px] overflow-y-auto pr-2">
                       {structureOrder.map((slide, idx) => (
-                        <div key={slide.index} className="flex items-center p-2 bg-gray-100 rounded mb-1">
-                          <span className="w-6 h-6 rounded-full bg-black/10 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
-                          <span className="flex-1 truncate text-sm font-medium text-black">{slide.title}</span>
+                        <div key={slide.index} className="flex items-center p-2 bg-gray-900/80 rounded mb-1">
+                          <span className="w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
+                          <span className="flex-1 truncate text-sm font-medium text-white">{slide.title}</span>
                           <button onClick={() => moveSlide(idx, idx - 1)} disabled={idx === 0} className="p-1"><ChevronUp size={16} /></button>
                           <button onClick={() => moveSlide(idx, idx + 1)} disabled={idx === structureOrder.length - 1} className="p-1"><ChevronDown size={16} /></button>
                         </div>
@@ -623,19 +624,19 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                     </div>
                   )}
                   <div className="flex gap-2 mt-4">
-                    <Button onClick={saveStructureOrder} disabled={structureLoading} className="bg-black text-white">Save</Button>
+                    <Button onClick={saveStructureOrder} disabled={structureLoading} className="bg-accent hover:bg-accent/80">Save</Button>
                     <Button variant="outline" onClick={() => setStructureEditMode(false)} disabled={structureLoading}>Cancel</Button>
-                        </div>
-                      </div>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
                   {structureOrder.map((slide, idx) => (
-                    <div key={slide.index} className="flex items-center p-2 bg-gray-100 rounded mb-1">
-                      <span className="w-6 h-6 rounded-full bg-black/10 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
-                      <span className="flex-1 truncate text-sm font-medium text-black">{slide.title}</span>
+                    <div key={slide.index} className="flex items-center p-2 bg-gray-900/80 rounded mb-1">
+                      <span className="w-6 h-6 rounded-full bg-black/40 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
+                      <span className="flex-1 truncate text-sm font-medium text-white">{slide.title}</span>
                     </div>
                   ))}
-              </div>
+                </div>
               )}
             </CardContent>
           </Card>
