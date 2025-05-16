@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, FilePdf, ArrowLeft } from "lucide-react";
+import { FileSpreadsheet, FileText, ArrowLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useAuth } from '@/context/AuthContext';
 import { getDownloadUrl, getExportUrl } from '@/lib/presentationService';
@@ -93,7 +92,7 @@ const ExportPresentation = () => {
               disabled={isLoading}
             >
               <div className="flex items-center">
-                <FilePdf className="mr-2" size={20} />
+                <FileText className="mr-2" size={20} />
                 <span>PDF Document (.pdf)</span>
               </div>
               {isLoading ? <Spinner size="sm" /> : null}
