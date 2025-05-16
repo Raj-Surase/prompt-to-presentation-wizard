@@ -10,6 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
 interface PresentationViewerProps {
   topics: any;
@@ -34,6 +37,17 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
   const [structureEditMode, setStructureEditMode] = useState(false);
   const [structureOrder, setStructureOrder] = useState<any[]>([]);
   const [structureLoading, setStructureLoading] = useState(false);
+  const [tab, setTab] = useState<string>('slides');
+  const [pdfNumPages, setPdfNumPages] = useState<number>(0);
+  const [pdfPage, setPdfPage] = useState<number>(1);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+
+  // Set up PDF.js worker
+  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+  const pdfUrl = presentationId ? `/api/presentations/${presentationId}/preview` : null;
 
   useEffect(() => {
     if (topics) {
@@ -84,6 +98,29 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
         .catch(() => setStructureLoading(false));
     }
   }, [structureEditMode, presentationId, session]);
+
+  // Fetch PDF as Blob when PDF tab is selected
+  useEffect(() => {
+    if (tab === 'pdf' && pdfUrl) {
+      setPdfLoading(true);
+      setPdfError(null);
+      fetch(pdfUrl, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch PDF');
+          return res.blob();
+        })
+        .then(blob => {
+          setPdfBlob(blob);
+          setPdfLoading(false);
+        })
+        .catch(err => {
+          setPdfError('Failed to load PDF preview.');
+          setPdfLoading(false);
+        });
+    }
+  }, [tab, pdfUrl, session?.access_token]);
 
   const handleDownload = async () => {
     if (!presentationId) return;
@@ -267,6 +304,16 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
     } finally {
       setStructureLoading(false);
     }
+  };
+
+  const handlePdfLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setPdfNumPages(numPages);
+    setPdfPage(1);
+    setPdfLoading(false);
+  };
+  const handlePdfLoadError = (err: any) => {
+    setPdfError('Failed to load PDF preview.');
+    setPdfLoading(false);
   };
 
   // Loading state
@@ -574,140 +621,141 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
         
         {/* Right panel - Slide preview/editor */}
         <div className="md:col-span-3">
-          <Card className="bg-black/60 border-border">
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={prevSlide} 
-                    disabled={currentSlideIndex === 0 || editMode}
-                    size="sm"
-                  >
-                    <ArrowLeft size={16} />
-                  </Button>
-                  <span className="text-sm py-2 px-1">
-                    Slide {currentSlideIndex + 1} of {presentationData.slides.length}
-                  </span>
-                  <Button 
-                    variant="outline" 
-                    onClick={nextSlide} 
-                    disabled={currentSlideIndex === presentationData.slides.length - 1 || editMode}
-                    size="sm"
-                  >
-                    <ArrowRight size={16} />
-                  </Button>
-                </div>
-                
-                <div>
-                  {editMode ? (
+          <Tabs value={tab} onValueChange={setTab} className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="slides">Slides</TabsTrigger>
+              <TabsTrigger value="pdf">PDF Preview</TabsTrigger>
+            </TabsList>
+            <TabsContent value="slides">
+              <Card className="bg-black/60 border-border">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center mb-4">
                     <div className="flex gap-2">
                       <Button 
                         variant="outline" 
-                        onClick={cancelEdit}
+                        onClick={prevSlide} 
+                        disabled={currentSlideIndex === 0 || editMode}
                         size="sm"
                       >
-                        Cancel
+                        <ArrowLeft size={16} />
                       </Button>
+                      <span className="text-sm py-2 px-1">
+                        Slide {currentSlideIndex + 1} of {presentationData.slides.length}
+                      </span>
                       <Button 
-                        onClick={handleSaveSlide}
+                        variant="outline" 
+                        onClick={nextSlide} 
+                        disabled={currentSlideIndex === presentationData.slides.length - 1 || editMode}
                         size="sm"
-                        disabled={isSaving}
-                        className="bg-accent hover:bg-accent/80"
                       >
-                        {isSaving ? (
-                          <Loader2 size={16} className="animate-spin mr-2" />
-                        ) : (
-                          <Save size={16} className="mr-2" />
-                        )}
-                        Save Changes
+                        <ArrowRight size={16} />
                       </Button>
                     </div>
-                  ) : (
-                    <Button 
-                      onClick={handleEditSlide}
-                      size="sm"
-                      className="bg-accent hover:bg-accent/80"
-                    >
-                      <Edit size={16} className="mr-2" /> Edit Slide
-                    </Button>
+                    
+                    <div>
+                      {editMode ? (
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            onClick={cancelEdit}
+                            size="sm"
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={handleSaveSlide}
+                            size="sm"
+                            disabled={isSaving}
+                            className="bg-accent hover:bg-accent/80"
+                          >
+                            {isSaving ? (
+                              <Loader2 size={16} className="animate-spin mr-2" />
+                            ) : (
+                              <Save size={16} className="mr-2" />
+                            )}
+                            Save Changes
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          onClick={handleEditSlide}
+                          size="sm"
+                          className="bg-accent hover:bg-accent/80"
+                        >
+                          <Edit size={16} className="mr-2" /> Edit Slide
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {saveSuccess && (
+                    <Alert className="mb-4 bg-green-500/10 border-green-500/30">
+                      <AlertDescription className="text-green-500">
+                        Slide changes saved successfully!
+                      </AlertDescription>
+                    </Alert>
                   )}
-                </div>
-              </div>
-              
-              {saveSuccess && (
-                <Alert className="mb-4 bg-green-500/10 border-green-500/30">
-                  <AlertDescription className="text-green-500">
-                    Slide changes saved successfully!
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="aspect-[16/9] border border-border rounded-lg overflow-hidden">
-                {editMode ? (
-                  // Edit Mode
-                  <div className="h-full bg-black/80 p-6 overflow-y-auto">
-                      <div className="space-y-4">
-                      {getPlaceholderInputs()}
+                  
+                  <div className="aspect-[16/9] border border-border rounded-lg overflow-hidden">
+                    {editMode ? (
+                      <div className="h-full bg-black/80 p-6 overflow-y-auto">
+                        <div className="space-y-4">{getPlaceholderInputs()}</div>
                       </div>
-                  </div>
-                ) : (
-                  // View Mode
-                  <div className="h-full bg-black/80 p-6">
-                    {renderSlideContent()}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* JSON Data Viewer */}
-          {/* <Tabs defaultValue="preview" className="w-full mt-4"> */}
-            {/* <TabsList>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-              <TabsTrigger value="json">JSON Structure</TabsTrigger>
-            </TabsList> */}
-            
-            {/* <TabsContent value="json" className="mt-2">
-              <Card className="bg-black/60 border-border">
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium mb-2">Current Slide JSON</h3>
-                  <div className="bg-black/80 rounded-md p-4 overflow-auto max-h-[200px]">
-                    <pre className="text-xs">
-                      {JSON.stringify(currentSlide, null, 2)}
-                    </pre>
+                    ) : (
+                      <div className="h-full bg-black/80 p-6">{renderSlideContent()}</div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent> */}
-            
-            {/* <TabsContent value="preview" className="mt-2"> */}
-            <div style={{ height: '18px' }}></div>
-              <Card className="bg-black/60 border-border" >
+              <div style={{ height: '18px' }}></div>
+              <Card className="bg-black/60 border-border">
                 <CardContent className="p-4">
                   <h3 className="text-sm font-medium mb-2">Slide Navigation</h3>
                   <div className="flex overflow-x-auto gap-2 pb-2">
                     {presentationData.slides.map((slide: any, index: number) => (
-                        <div 
-                          key={index}
-                          className={`
-                            cursor-pointer flex-shrink-0 w-16 h-12 border rounded overflow-hidden
-                          ${currentSlideIndex === index ? 'border-accent' : 'border-border'}
-                          `}
-                          onClick={() => goToSlide(index)}
-                        >
+                      <div
+                        key={index}
+                        className={`cursor-pointer flex-shrink-0 w-16 h-12 border rounded overflow-hidden ${currentSlideIndex === index ? 'border-accent' : 'border-border'}`}
+                        onClick={() => goToSlide(index)}
+                      >
                         <div className="w-full h-full p-1 flex flex-col justify-center items-center text-[8px] text-center">
-                            <div className="truncate w-full">
-                            {index + 1}: {getSlideTitle(slide)}
-                          </div>
+                          <div className="truncate w-full">{index + 1}: {getSlideTitle(slide)}</div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
-            {/* </TabsContent> */}
-          {/* </Tabs> */}
+            </TabsContent>
+            <TabsContent value="pdf">
+              <Card className="bg-black/60 border-border">
+                <CardContent className="p-4 flex flex-col items-center">
+                  {pdfError && <Alert className="mb-4 bg-red-500/10 border-red-500/30"><AlertDescription className="text-red-500">{pdfError}</AlertDescription></Alert>}
+                  {pdfLoading && <div className="flex flex-col items-center justify-center h-96"><Loader2 className="animate-spin mb-2" /> Loading PDF...</div>}
+                  {!pdfLoading && pdfBlob && (
+                    <div className="flex flex-col items-center w-full">
+                      <div className="flex justify-center mb-2 gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setPdfPage(p => Math.max(1, p - 1))} disabled={pdfPage <= 1}>Prev</Button>
+                        <span className="text-sm py-2 px-1">Page {pdfPage} of {pdfNumPages}</span>
+                        <Button variant="outline" size="sm" onClick={() => setPdfPage(p => Math.min(pdfNumPages, p + 1))} disabled={pdfPage >= pdfNumPages}>Next</Button>
+                      </div>
+                      <div className="aspect-[16/9] w-full max-w-3xl border border-border rounded-lg bg-white flex items-center justify-center overflow-auto">
+                        <Document
+                          file={pdfBlob}
+                          onLoadSuccess={handlePdfLoadSuccess}
+                          onLoadError={handlePdfLoadError}
+                          loading={<div className="flex flex-col items-center justify-center h-96"><Loader2 className="animate-spin mb-2" /> Loading PDF...</div>}
+                          error={<div className="text-red-500">Failed to load PDF.</div>}
+                        >
+                          <Page pageNumber={pdfPage} width={900} renderAnnotationLayer renderTextLayer />
+                        </Document>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
