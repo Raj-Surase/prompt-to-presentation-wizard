@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import EditTopics from "./pages/EditTopics";
 import PreviewPresentation from "./pages/PreviewPresentation";
+import ExportPresentation from "./pages/ExportPresentation";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -34,6 +35,11 @@ const App = () => (
               <Route path="/preview" element={
                 <ProtectedRoute>
                   <PreviewPresentation />
+                </ProtectedRoute>
+              } />
+              <Route path="/export" element={
+                <ProtectedRoute>
+                  <ExportPresentation />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { usePresentationContext } from '@/context/PresentationContext';
 import { useAuth } from '@/context/AuthContext';
 import PresentationViewer from '@/components/PresentationViewer';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft, Check } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, FileSpreadsheet } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -97,6 +98,10 @@ const PreviewPresentation = () => {
   const handleBackToEdit = () => {
     navigate('/edit', { state: { presentationId } });
   };
+  
+  const handleExportPage = () => {
+    navigate('/export', { state: { presentationId } });
+  };
 
   // Loading state
   if (isLoading) {
@@ -155,10 +160,9 @@ const PreviewPresentation = () => {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-7xl">
         
-        
         {presentationMeta && (
           <div className="mb-4">
-            <Card className="bg-black/60 border-border p-4">
+            <Card className="bg-gray-900 border-white/10 p-4">
               <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex-1">
                   <p className="text-muted-foreground">Topic</p>
@@ -180,6 +184,17 @@ const PreviewPresentation = () => {
             </Card>
           </div>
         )}
+        
+        <div className="flex justify-end mb-4">
+          <Button 
+            onClick={handleExportPage} 
+            variant="outline" 
+            className="flex items-center gap-2 border-white/20 hover:bg-secondary/30"
+          >
+            <FileSpreadsheet size={16} />
+            Export Presentation
+          </Button>
+        </div>
         
         <PresentationViewer 
           topics={presentationData} 

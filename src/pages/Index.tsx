@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -79,13 +78,15 @@ const Index = () => {
               <Zap size={22} className="text-white animate-pulse-slow" />
               <h2 className="text-xl font-bold">Create New Presentation</h2>
             </div>
-            <CreatePresentationForm onSuccess={(presentationId) => {
-              toast({
-                title: "Presentation created!",
-                description: "Redirecting to edit page...",
-              });
-              navigate("/edit", { state: { presentationId } });
-            }} />
+            <CreatePresentationForm
+              onSuccess={(presentationId: any) => {
+                toast({
+                  title: "Presentation created!",
+                  description: "Redirecting to edit page...",
+                });
+                navigate("/edit", { state: { presentationId } });
+              }}
+            />
           </div>
         </div>
         
