@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, ArrowLeft, Download, Edit, Loader2, Save, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { ArrowRight, ArrowLeft, Download, Edit, Loader2, Save, ChevronDown, ChevronUp, Pencil, FileText, FileSpreadsheet } from "lucide-react";
 import { usePresentationContext } from '@/context/PresentationContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -316,6 +316,28 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
     setPdfLoading(false);
   };
 
+  const handleExportFile = async (format: 'pptx' | 'pdf') => {
+    if (!presentationId) return;
+    try {
+      const res = await fetch(`/api/export/${presentationId}/${format}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
+      });
+      if (!res.ok) throw new Error('Failed to export');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `presentation_${presentationId}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast({ title: 'Export Started', description: `Your ${format.toUpperCase()} file is being downloaded.` });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Export Failed', description: `Could not export the ${format.toUpperCase()} file.` });
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -589,7 +611,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   {structureLoading ? (
                     <div className="flex justify-center py-4"><Loader2 className="animate-spin" /></div>
                   ) : (
-              <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+              <div className="space-y-2 max-h-[550px] overflow-y-auto pr-2">
                       {structureOrder.map((slide, idx) => (
                         <div key={slide.index} className="flex items-center p-2 bg-gray-100 rounded mb-1">
                           <span className="w-6 h-6 rounded-full bg-black/10 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
@@ -606,7 +628,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         </div>
                       </div>
               ) : (
-                <div className="space-y-2 max-h-[650px] overflow-y-auto pr-2">
+                <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
                   {structureOrder.map((slide, idx) => (
                     <div key={slide.index} className="flex items-center p-2 bg-gray-100 rounded mb-1">
                       <span className="w-6 h-6 rounded-full bg-black/10 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
@@ -622,10 +644,20 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
         {/* Right panel - Slide preview/editor */}
         <div className="md:col-span-3">
           <Tabs value={tab} onValueChange={setTab} className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="slides">Slides</TabsTrigger>
-              <TabsTrigger value="pdf">PDF Preview</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center mb-4 gap-2">
+              <TabsList>
+                <TabsTrigger value="slides">Slides</TabsTrigger>
+                <TabsTrigger value="pdf">PDF Preview</TabsTrigger>
+              </TabsList>
+              <div className="flex gap-2 ml-4">
+                <Button size="sm" variant="outline" onClick={() => handleExportFile('pptx')} title="Export as PPTX">
+                  <FileSpreadsheet size={16} className="mr-1" /> PPTX
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleExportFile('pdf')} title="Export as PDF">
+                  <FileText size={16} className="mr-1" /> PDF
+                </Button>
+              </div>
+            </div>
             <TabsContent value="slides">
               <Card className="bg-black/60 border-border">
                 <CardContent className="p-4">
@@ -707,7 +739,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   </div>
                 </CardContent>
               </Card>
-              <div style={{ height: '18px' }}></div>
+              {/* <div style={{ height: '18px' }}></div>
               <Card className="bg-black/60 border-border">
                 <CardContent className="p-4">
                   <h3 className="text-sm font-medium mb-2">Slide Navigation</h3>
@@ -725,7 +757,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                     ))}
                   </div>
                 </CardContent>
-              </Card>
+              </Card> */}
             </TabsContent>
             <TabsContent value="pdf">
               <Card className="bg-black/60 border-border">
@@ -734,12 +766,12 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   {pdfLoading && <div className="flex flex-col items-center justify-center h-96"><Loader2 className="animate-spin mb-2" /> Loading PDF...</div>}
                   {!pdfLoading && pdfBlob && (
                     <div className="flex flex-col items-center w-full">
-                      <div className="flex justify-center mb-2 gap-2">
+                      <div className="flex justify-start mb-2 gap-2 w-full">
                         <Button variant="outline" size="sm" onClick={() => setPdfPage(p => Math.max(1, p - 1))} disabled={pdfPage <= 1}>Prev</Button>
                         <span className="text-sm py-2 px-1">Page {pdfPage} of {pdfNumPages}</span>
                         <Button variant="outline" size="sm" onClick={() => setPdfPage(p => Math.min(pdfNumPages, p + 1))} disabled={pdfPage >= pdfNumPages}>Next</Button>
                       </div>
-                      <div className="aspect-[16/9] w-full max-w-3xl border border-border rounded-lg bg-white flex items-center justify-center overflow-auto">
+                      <div className="aspect-[16/9] w-full max-w-4xl border border-border rounded-lg bg-white flex items-center justify-center overflow-auto">
                         <Document
                           file={pdfBlob}
                           onLoadSuccess={handlePdfLoadSuccess}
@@ -747,7 +779,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                           loading={<div className="flex flex-col items-center justify-center h-96"><Loader2 className="animate-spin mb-2" /> Loading PDF...</div>}
                           error={<div className="text-red-500">Failed to load PDF.</div>}
                         >
-                          <Page pageNumber={pdfPage} width={900} renderAnnotationLayer renderTextLayer />
+                          <Page pageNumber={pdfPage} width={896} renderAnnotationLayer renderTextLayer />
                         </Document>
                       </div>
                     </div>
