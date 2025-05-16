@@ -25,7 +25,7 @@
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
     
-    --accent: 0 0% 0%;
+    --accent: 240 5% 15.9%;
     --accent-foreground: 0 0% 98%;
     
     --destructive: 0 62.8% 30.6%;
@@ -61,7 +61,7 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-gray-900 backdrop-blur-sm rounded-lg border border-white/10 shadow-lg;
+    @apply bg-secondary/30 backdrop-blur-sm rounded-lg border border-white/10 shadow-lg;
   }
   
   .gradient-text {
@@ -73,7 +73,7 @@
   }
   
   .rounded-input {
-    @apply p-2 rounded-xl border-gray-700 border text-lg font-medium text-white bg-gray-800;
+    @apply p-2 rounded-xl border-gray-700 border text-lg font-medium text-white bg-secondary/30;
   }
 
   /* 3D hover effect for cards */
@@ -99,7 +99,7 @@
   
   /* Custom styles for edit route */
   .edit-field {
-    @apply bg-gray-800 text-white border-gray-700 border;
+    @apply bg-secondary text-white border-gray-700 border;
   }
   
   /* Animated loading */
@@ -134,7 +134,7 @@
   
   /* Project card styles */
   .project-card {
-    @apply rounded-xl overflow-hidden bg-gray-900 border border-white/10 transition-all;
+    @apply rounded-xl overflow-hidden bg-secondary/30 border border-white/10 transition-all;
   }
   
   .project-card:hover {
