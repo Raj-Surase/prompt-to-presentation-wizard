@@ -23,12 +23,16 @@ const PreviewPresentation = () => {
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [presentationMeta, setPresentationMeta] = useState<any>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if we have a presentation ID from the location state
     if (location.state?.presentationId) {
       setPresentationId(location.state.presentationId);
       fetchPresentationData(location.state.presentationId);
+      fetchPdfBlob(location.state.presentationId);
     }
   }, [location.state]);
 
@@ -75,6 +79,9 @@ const PreviewPresentation = () => {
           setTopics(responseData);
           setIsLoading(false);
           
+          // Fetch PDF blob after presentation data is completed
+          fetchPdfBlob(id);
+          
           // Show success alert when presentation is ready
           setSuccessMessage('Your presentation is ready!');
           setShowSuccessAlert(true);
@@ -91,6 +98,31 @@ const PreviewPresentation = () => {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       console.error('Error fetching presentation status:', err);
       setIsLoading(false);
+    }
+  };
+
+  const fetchPdfBlob = async (id: number) => {
+    const pdfUrl = `/api/presentations/${id}/preview`;
+    if (!pdfUrl) return;
+
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      const response = await fetch(pdfUrl, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch PDF');
+      }
+
+      const blob = await response.blob();
+      setPdfBlob(blob);
+      setPdfLoading(false);
+    } catch (err) {
+      setPdfError('Failed to load PDF preview.');
+      setPdfLoading(false);
+      console.error('Error fetching PDF blob:', err);
     }
   };
 
@@ -185,6 +217,9 @@ const PreviewPresentation = () => {
           topics={presentationData} 
           onExport={handleExport} 
           presentationId={presentationId}
+          pdfBlob={pdfBlob}
+          pdfLoading={pdfLoading}
+          pdfError={pdfError}
         />
         
         {/* Success notification */}

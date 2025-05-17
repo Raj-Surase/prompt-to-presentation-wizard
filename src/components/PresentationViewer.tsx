@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, ArrowLeft, Download, Edit, Loader2, Save, ChevronDown, ChevronUp, Pencil, FileText, FileSpreadsheet } from "lucide-react";
+import { ArrowRight, ArrowLeft, Download, Edit, Loader2, Save, ChevronDown, ChevronUp, Pencil, FileText, FileSpreadsheet, List } from "lucide-react";
 import { usePresentationContext } from '@/context/PresentationContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,9 +18,14 @@ interface PresentationViewerProps {
   topics: any;
   onExport: () => void;
   presentationId?: number | null;
+  pdfBlob: Blob | null;
+  pdfLoading: boolean;
+  pdfError: string | null;
 }
 
-const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExport, presentationId }) => {
+const PresentationViewer: React.FC<PresentationViewerProps> = ({
+  topics, onExport, presentationId, pdfBlob, pdfLoading, pdfError
+}) => {
   const { toast } = useToast();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [presentationData, setPresentationData] = useState<any>(null);
@@ -37,15 +42,16 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
   const [structureEditMode, setStructureEditMode] = useState(false);
   const [structureOrder, setStructureOrder] = useState<any[]>([]);
   const [structureLoading, setStructureLoading] = useState(false);
-  const [tab, setTab] = useState<string>('slides');
+  const [tab, setTab] = useState<string>('pdf');
   const [pdfNumPages, setPdfNumPages] = useState<number>(0);
-  const [pdfPage, setPdfPage] = useState<number>(1);
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [pdfError, setPdfError] = useState<string | null>(null);
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [pdfPage, setPdfPage] = useState<number>(currentSlideIndex + 1);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
+  // Sync PDF page with current slide index
+  useEffect(() => {
+    setPdfPage(currentSlideIndex + 1);
+  }, [currentSlideIndex]);
 
   // Set up PDF.js worker
   pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -115,29 +121,6 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
         .catch(() => setStructureLoading(false));
     }
   }, [structureEditMode, presentationId, session]);
-
-  // Fetch PDF as Blob when PDF tab is selected
-  useEffect(() => {
-    if (tab === 'pdf' && pdfUrl) {
-      setPdfLoading(true);
-      setPdfError(null);
-      fetch(pdfUrl, {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
-      })
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch PDF');
-          return res.blob();
-        })
-        .then(blob => {
-          setPdfBlob(blob);
-          setPdfLoading(false);
-        })
-        .catch(err => {
-          setPdfError('Failed to load PDF preview.');
-          setPdfLoading(false);
-        });
-    }
-  }, [tab, pdfUrl, session?.access_token]);
 
   const handleDownload = async () => {
     if (!presentationId) return;
@@ -325,12 +308,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
 
   const handlePdfLoadSuccess = ({ numPages }: { numPages: number }) => {
     setPdfNumPages(numPages);
-    setPdfPage(1);
-    setPdfLoading(false);
-  };
-  const handlePdfLoadError = (err: any) => {
-    setPdfError('Failed to load PDF preview.');
-    setPdfLoading(false);
+    setPdfPage(currentSlideIndex + 1);
   };
 
   const handleExportFile = async (format: 'pptx' | 'pdf') => {
@@ -623,37 +601,82 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   <Pencil size={18} />
                 </button>
               </div>
-              {structureEditMode ? (
-                <div>
-                  {structureLoading ? (
-                    <div className="flex justify-center py-4"><Loader2 className="animate-spin" /></div>
+              <Tabs defaultValue="filmstrip" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="filmstrip" className="flex items-center justify-center gap-1" title="Filmstrip View">
+                    <FileText size={16} />
+                  </TabsTrigger>
+                  <TabsTrigger value="list" className="flex items-center justify-center gap-1" title="List View">
+                    <List size={16} />
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="list">
+                  {structureEditMode ? (
+                    <div>
+                      {structureLoading ? (
+                        <div className="flex justify-center py-4"><Loader2 className="animate-spin" /></div>
+                      ) : (
+                        <div className="space-y-2 max-h-[550px] overflow-y-auto pr-2">
+                          {structureOrder.map((slide, idx) => (
+                            <div key={slide.index} className="flex items-center p-2 bg-gray-900/80 rounded mb-1">
+                              <span className="w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
+                              <span className="flex-1 truncate text-sm font-medium text-white">{slide.title}</span>
+                              <button onClick={() => moveSlide(idx, idx - 1)} disabled={idx === 0} className="p-1"><ChevronUp size={16} /></button>
+                              <button onClick={() => moveSlide(idx, idx + 1)} disabled={idx === structureOrder.length - 1} className="p-1"><ChevronDown size={16} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2 mt-4">
+                        <Button onClick={saveStructureOrder} disabled={structureLoading} className="bg-accent hover:bg-accent/80">Save</Button>
+                        <Button variant="outline" onClick={() => setStructureEditMode(false)} disabled={structureLoading}>Cancel</Button>
+                      </div>
+                    </div>
                   ) : (
-              <div className="space-y-2 max-h-[550px] overflow-y-auto pr-2">
+                    <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
                       {structureOrder.map((slide, idx) => (
-                        <div key={slide.index} className="flex items-center p-2 bg-gray-900/80 rounded mb-1">
-                        <span className="w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
-                        <span className="flex-1 truncate text-sm font-medium text-white">{slide.title}</span>
-                          <button onClick={() => moveSlide(idx, idx - 1)} disabled={idx === 0} className="p-1"><ChevronUp size={16} /></button>
-                          <button onClick={() => moveSlide(idx, idx + 1)} disabled={idx === structureOrder.length - 1} className="p-1"><ChevronDown size={16} /></button>
+                        <div key={slide.index} className="flex items-center p-2 bg-gray-900/80 rounded mb-1 cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => goToSlide(idx)}>
+                          <span className="w-6 h-6 rounded-full bg-black/40 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
+                          <span className="flex-1 truncate text-sm font-medium text-white">{slide.title}</span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-2 mt-4">
-                    <Button onClick={saveStructureOrder} disabled={structureLoading} className="bg-accent hover:bg-accent/80">Save</Button>
-                    <Button variant="outline" onClick={() => setStructureEditMode(false)} disabled={structureLoading}>Cancel</Button>
+                </TabsContent>
+                <TabsContent value="filmstrip">
+                  {pdfLoading && (
+                    <div className="flex justify-center py-4"><Loader2 className="animate-spin" /> Loading thumbnails...</div>
+                  )}
+                  {pdfError && <div className="text-red-500">{pdfError}</div>}
+                  {!pdfLoading && pdfBlob && pdfNumPages > 0 && (
+                    <div className="flex flex-col items-center space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                      {Array.from(new Array(pdfNumPages), (el, index) => (
+                        <div 
+                          key={`page-${index}`}
+                          className={`flex flex-col items-center p-2 rounded cursor-pointer ${currentSlideIndex === index ? 'border border-accent bg-gray-800/50' : 'border border-transparent hover:bg-gray-900/50'} transition-colors`}
+                          onClick={() => goToSlide(index)}
+                        >
+                          <div className="h-auto border border-border mb-2">
+                            <Document
+                              file={pdfBlob}
+                              loading=""
+                              error=""
+                            >
+                              <Page
+                                pageNumber={index + 1}
+                                width={220} // Thumbnail width
+                                renderAnnotationLayer={false}
+                                renderTextLayer={false}
+                              />
+                            </Document>
+                          </div>
+                          <span className="text-xs text-center text-white/90 truncate w-32">Slide {index + 1}: {structureOrder[index]?.title || 'Untitled'}</span>
                         </div>
-                      </div>
-              ) : (
-                <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-                  {structureOrder.map((slide, idx) => (
-                    <div key={slide.index} className="flex items-center p-2 bg-gray-900/80 rounded mb-1">
-                      <span className="w-6 h-6 rounded-full bg-black/40 flex items-center justify-center text-xs font-medium mr-2">{idx + 1}</span>
-                      <span className="flex-1 truncate text-sm font-medium text-white">{slide.title}</span>
+                      ))}
                     </div>
-                  ))}
-              </div>
-              )}
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
@@ -663,8 +686,8 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
           <Tabs value={tab} onValueChange={setTab} className="w-full">
             <div className="flex items-center mb-4 gap-2">
               <TabsList>
-                <TabsTrigger value="slides">Slides</TabsTrigger>
                 <TabsTrigger value="pdf">PDF Preview</TabsTrigger>
+                <TabsTrigger value="slides">Slides</TabsTrigger>
               </TabsList>
               <div className="flex gap-2 ml-4">
                 <Button size="sm" variant="outline" onClick={() => handleExportFile('pptx')} title="Export as PPTX">
@@ -795,9 +818,9 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                   {!pdfLoading && pdfBlob && (
                     <div className="flex flex-col items-center w-full">
                       <div className="flex justify-start mb-2 gap-2 w-full">
-                        <Button variant="outline" size="sm" onClick={() => setPdfPage(p => Math.max(1, p - 1))} disabled={pdfPage <= 1}>Prev</Button>
+                        <Button variant="outline" size="sm" onClick={() => setPdfPage(p => Math.max(1, p - 1))} disabled={pdfPage <= 1}><ArrowLeft size={16} /></Button>
                         <span className="text-sm py-2 px-1">Page {pdfPage} of {pdfNumPages}</span>
-                        <Button variant="outline" size="sm" onClick={() => setPdfPage(p => Math.min(pdfNumPages, p + 1))} disabled={pdfPage >= pdfNumPages}>Next</Button>
+                        <Button variant="outline" size="sm" onClick={() => setPdfPage(p => Math.min(pdfNumPages, p + 1))} disabled={pdfPage >= pdfNumPages}><ArrowRight size={16} /></Button>
                       </div>
 
                       {/* Container that scales */}
@@ -808,7 +831,6 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         <Document
                           file={pdfBlob}
                           onLoadSuccess={handlePdfLoadSuccess}
-                          onLoadError={handlePdfLoadError}
                           loading={<div className="flex flex-col items-center justify-center h-96"><Loader2 className="animate-spin mb-2" /> Loading PDF...</div>}
                           error={<div className="text-red-500">Failed to load PDF.</div>}
                         >
