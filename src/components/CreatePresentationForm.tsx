@@ -35,7 +35,11 @@ const SLIDE_COUNT_OPTIONS = [
   { value: 20, label: '20 slides (comprehensive)' }
 ];
 
-const CreatePresentationForm = () => {
+interface CreatePresentationFormProps {
+  onSuccess?: (presentationId: number) => void;
+}
+
+const CreatePresentationForm = ({ onSuccess }: CreatePresentationFormProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { generateNewPresentation } = usePresentations();
@@ -76,8 +80,13 @@ const CreatePresentationForm = () => {
         description: 'Your presentation is being created. You will be redirected to the edit page.',
       });
       
-      // Navigate to the edit page with the new presentation ID
-      navigate('/edit', { state: { presentationId: result.id } });
+      // Call onSuccess if provided
+      if (onSuccess) {
+        onSuccess(result.id);
+      } else {
+        // Navigate to the edit page with the new presentation ID
+        navigate('/edit', { state: { presentationId: result.id } });
+      }
     } catch (error: any) {
       toast({
         variant: 'destructive',

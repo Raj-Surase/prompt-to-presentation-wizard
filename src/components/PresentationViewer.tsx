@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, ArrowLeft, Download, Edit, Loader2, Save, ChevronDown, ChevronUp, Pencil, FileText, FileSpreadsheet } from "lucide-react";
@@ -43,6 +43,9 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
 
   // Set up PDF.js worker
   pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -58,6 +61,20 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
       }
     }
   }, [topics, presentationId]);
+
+  // PDF Viewer height and width
+  useEffect(() => {
+    function updateWidth() {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+    }
+  
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+  
 
   // Hide success message after 3 seconds
   useEffect(() => {
@@ -597,7 +614,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
     <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Left panel - Slide structure */}
-        <div className="md:col-span-1">
+        <div className="order-2 md:order-1 md:col-span-1">
           <Card className="bg-black/60 border-border h-full shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
@@ -642,7 +659,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
         </div>
         
         {/* Right panel - Slide preview/editor */}
-        <div className="md:col-span-3">
+        <div className="order-1 md:order-2 md:col-span-3">
           <Tabs value={tab} onValueChange={setTab} className="w-full">
             <div className="flex items-center mb-4 gap-2">
               <TabsList>
@@ -759,11 +776,22 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                 </CardContent>
               </Card> */}
             </TabsContent>
+
             <TabsContent value="pdf">
               <Card className="bg-black/60 border-border">
                 <CardContent className="p-4 flex flex-col items-center">
-                  {pdfError && <Alert className="mb-4 bg-red-500/10 border-red-500/30"><AlertDescription className="text-red-500">{pdfError}</AlertDescription></Alert>}
-                  {pdfLoading && <div className="flex flex-col items-center justify-center h-96"><Loader2 className="animate-spin mb-2" /> Loading PDF...</div>}
+                  {pdfError && (
+                    <Alert className="mb-4 bg-red-500/10 border-red-500/30">
+                      <AlertDescription className="text-red-500">{pdfError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {pdfLoading && (
+                    <div className="flex flex-col items-center justify-center h-96">
+                      <Loader2 className="animate-spin mb-2" /> Loading PDF...
+                    </div>
+                  )}
+
                   {!pdfLoading && pdfBlob && (
                     <div className="flex flex-col items-center w-full">
                       <div className="flex justify-start mb-2 gap-2 w-full">
@@ -771,7 +799,12 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                         <span className="text-sm py-2 px-1">Page {pdfPage} of {pdfNumPages}</span>
                         <Button variant="outline" size="sm" onClick={() => setPdfPage(p => Math.min(pdfNumPages, p + 1))} disabled={pdfPage >= pdfNumPages}>Next</Button>
                       </div>
-                      <div className="aspect-[16/9] w-full max-w-4xl border border-border rounded-lg bg-white flex items-center justify-center overflow-auto">
+
+                      {/* Container that scales */}
+                      <div
+                        ref={containerRef}
+                        className="aspect-[16/9] w-full max-w-4xl border border-border rounded-lg bg-white flex items-center justify-center overflow-auto"
+                      >
                         <Document
                           file={pdfBlob}
                           onLoadSuccess={handlePdfLoadSuccess}
@@ -779,7 +812,12 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                           loading={<div className="flex flex-col items-center justify-center h-96"><Loader2 className="animate-spin mb-2" /> Loading PDF...</div>}
                           error={<div className="text-red-500">Failed to load PDF.</div>}
                         >
-                          <Page pageNumber={pdfPage} width={896} renderAnnotationLayer renderTextLayer />
+                          <Page
+                            pageNumber={pdfPage}
+                            width={containerWidth} // dynamic width
+                            renderAnnotationLayer={false}
+                            renderTextLayer={false}
+                          />
                         </Document>
                       </div>
                     </div>
@@ -787,6 +825,7 @@ const PresentationViewer: React.FC<PresentationViewerProps> = ({ topics, onExpor
                 </CardContent>
               </Card>
             </TabsContent>
+
           </Tabs>
         </div>
       </div>

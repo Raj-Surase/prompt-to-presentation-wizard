@@ -12,13 +12,19 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import WelcomeMessage from '@/components/WelcomeMessage';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, session } = useAuth();
   const { presentations: userPresentations, loading, error } = usePresentations();
   const { toast } = useToast();
   const [showWelcome, setShowWelcome] = useState(false);
+  const [pdfThumbnails, setPdfThumbnails] = useState<{[id: number]: string}>({});
   
   useEffect(() => {
     // Check if this is a new login/signup by looking for a URL parameter
@@ -54,6 +60,48 @@ const Index = () => {
     { id: 104, title: "Annual Financial Report Template", author: "Sara Williams", likes: 132, image: "presentation4.jpg" }
   ];
 
+  const fetchPdfThumbnail = async (presentationId: number) => {
+    try {
+      // Fetch the PDF blob
+      const response = await fetch(`/api/presentations/${presentationId}/preview`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
+      });
+      
+      if (!response.ok) return;
+      
+      // Create a temporary canvas to render the PDF page
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      
+      // Render PDF first page to canvas
+      const blob = await response.blob();
+      const pdfDocument = await pdfjs.getDocument({ data: await blob.arrayBuffer() }).promise;
+      const page = await pdfDocument.getPage(1);
+      
+      const viewport = page.getViewport({ scale: 0.5 }); // Smaller scale for thumbnails
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      await page.render({ canvasContext: context, viewport }).promise;
+      
+      // Convert canvas to image URL
+      const imageUrl = canvas.toDataURL('image/png');
+      setPdfThumbnails(prev => ({ ...prev, [presentationId]: imageUrl }));
+    } catch (error) {
+      console.error('Error generating PDF thumbnail:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (userPresentations?.length) {
+      userPresentations.forEach(presentation => {
+        if (presentation.status === 'completed') {
+          fetchPdfThumbnail(presentation.id);
+        }
+      });
+    }
+  }, [userPresentations]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
@@ -62,14 +110,14 @@ const Index = () => {
       
       {/* Hero Section */}
       <div className="flex flex-col items-center justify-center px-4 py-16">
-        <div className="text-center mb-10">
+        {/* <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-bold mb-3 gradient-text animate-float">
             Presentation AI
           </h1>
           <p className="text-muted-foreground max-w-md mx-auto mb-8">
             Transform your ideas into stunning presentations with AI assistance
           </p>
-        </div>
+        </div> */}
         
         {/* Create Presentation Form Section */}
         <div className="w-full max-w-2xl mx-auto mb-16">
@@ -132,9 +180,21 @@ const Index = () => {
                   className="glass-panel hover-3d p-4 cursor-pointer transition-all"
                   onClick={() => navigate('/preview', { state: { presentationId: presentation.id, fromIndex: true } })}
                 >
-                  <div className="bg-gray-800/50 rounded-lg h-32 mb-3 flex items-center justify-center">
-                    <FileText size={32} className="text-gray-400" />
+                  <div className="relative w-full mb-3 rounded-lg overflow-hidden bg-gray-800/50">
+                    <div className="pt-[56.25%]"></div> {/* 16:9 aspect ratio (9/16 = 0.5625 or 56.25%) */}
+                    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                      {pdfThumbnails[presentation.id] ? (
+                        <img 
+                          src={pdfThumbnails[presentation.id]} 
+                          alt={presentation.prompt} 
+                          className="w-full h-full object-fill"
+                        />
+                      ) : (
+                        <FileText size={32} className="text-gray-400" />
+                      )}
+                    </div>
                   </div>
+
                   <div className="flex justify-between items-start">
                     <h3 className="font-semibold truncate flex-1">{presentation.prompt}</h3>
                     {presentation.status === 'completed' && (
